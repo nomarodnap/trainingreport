@@ -1,13 +1,8 @@
-// pages/api/reset-password-request.js
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
-import mysql from 'mysql2/promise';
-import pool from '../../lib/db.js'; 
+import pool from '../../lib/db.js';  // นำเข้า pool จาก db.js
 
-
-// สร้างฟังก์ชัน query สำหรับเชื่อมต่อฐานข้อมูล
-
-
+// ฟังก์ชันสำหรับ query
 async function query(sql, params) {
   const [results] = await pool.execute(sql, params);
   return results;
@@ -52,9 +47,9 @@ export default async function handler(req, res) {
         },
       });
 
-      const resetLink = `${process.env.BASE_URL}/reset-password?token=${token}`;
+      const resetLink = `https://trainingreport.vercel.app/reset-password?token=${token}`;
       const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: ระบบรายงานผลการฝึกอบรม,
         to: email,
         subject: 'ลิงก์รีเซ็ตรหัสผ่าน',
         html: `<p>คลิกที่ลิงก์เพื่อรีเซ็ตรหัสผ่านของคุณ: <a href="${resetLink}">${resetLink}</a></p>`,

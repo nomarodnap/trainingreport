@@ -15,11 +15,11 @@ const transporter = nodemailer.createTransport({
 // ฟังก์ชันสำหรับส่งอีเมลยืนยัน
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: 'dofictdev@gmail.com',
+    from: 'ระบบรายงานผลการฝึกอบรม',
     to: email,
     subject: 'ยืนยันอีเมลของคุณ',
     text: `คลิกที่ลิงก์เพื่อยืนยันอีเมลของคุณ: 
-      http://your-domain.com/verify-email?code=${verificationCode}`,
+      https://trainingreport.vercel.app/verify-email?code=${verificationCode}`,
   };
 
   try {

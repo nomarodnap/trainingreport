@@ -1,10 +1,5 @@
-// pages/api/updateUserProfile.js
-import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
-import db from '../../lib/db';
-
-
-
+import db from '../../lib/db.js'; // นำเข้า db จาก db.js
 
 export default async function handler(req, res) {
   if (req.method === 'PUT') {

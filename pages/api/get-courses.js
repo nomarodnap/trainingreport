@@ -1,11 +1,10 @@
+import dbConfig from '../../lib/db.js';
 import mysql from 'mysql2/promise';
-import dbConfig from '../../lib/db.js'; 
-
-
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // เชื่อมต่อฐานข้อมูลโดยใช้ dbConfig
       const connection = await mysql.createConnection(dbConfig);
 
       const query = `
@@ -25,7 +24,7 @@ export default async function handler(req, res) {
       `;
 
       const [rows] = await connection.execute(query);
-      connection.end();
+      await connection.end();
 
       res.status(200).json({ courses: rows });
     } catch (error) {

@@ -1,7 +1,5 @@
-import mysql from 'mysql2/promise';
 import dbConfig from '../../lib/db.js';
-
-
+import mysql from 'mysql2/promise';
 
 export default async function handler(req, res) {
   if (req.method === 'DELETE') {
@@ -13,14 +11,14 @@ export default async function handler(req, res) {
     }
 
     try {
-      // เชื่อมต่อกับฐานข้อมูล MySQL
+      // เชื่อมต่อกับฐานข้อมูลโดยใช้ dbConfig
       const connection = await mysql.createConnection(dbConfig);
 
       // สั่งลบข้อมูลจากตาราง course1 ตาม id_macou ที่ได้รับ
       const query = 'DELETE FROM course1 WHERE id_macou = ?';
       const [result] = await connection.execute(query, [id_macou]);
 
-      connection.end();
+      await connection.end();
 
       if (result.affectedRows > 0) {
         // ถ้าลบสำเร็จ
