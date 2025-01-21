@@ -1,12 +1,8 @@
 import { createConnection } from 'mysql2/promise';
 import bcrypt from 'bcrypt';
+import dbConfig from '../../lib/db.js'; 
 
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '', // เปลี่ยนเป็นรหัสผ่านจริงของคุณ
-  database: 'hrd', // เปลี่ยนเป็นชื่อฐานข้อมูลของคุณ
-};
+
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {

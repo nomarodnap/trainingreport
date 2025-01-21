@@ -1,17 +1,14 @@
 // pages/api/notifications/[id]/mark-as-read.js
 import mysql from 'mysql2';
+import db from '../../../../lib/db'; // เชื่อมต่อฐานข้อมูล (คุณอาจต้องปรับตามโปรเจกต์ของคุณ)
+
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
     const { id } = req.query;
 
     // ตั้งค่าการเชื่อมต่อกับฐานข้อมูล MySQL
-    const pool = mysql.createPool({
-      host: 'localhost',       // เปลี่ยนเป็นข้อมูลเซิร์ฟเวอร์ของคุณ
-      user: 'root',            // ชื่อผู้ใช้งาน MySQL ของคุณ
-      password: '',    // รหัสผ่าน MySQL ของคุณ
-      database: 'hrd',         // ชื่อฐานข้อมูลของคุณ
-    });
+
 
     try {
       // อัปเดตการแจ้งเตือนในฐานข้อมูล

@@ -1,13 +1,8 @@
 import mysql from 'mysql2';
+import db from '../../lib/db.js'; 
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const db = mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'hrd',
-    });
 
     db.connect((err) => {
       if (err) {

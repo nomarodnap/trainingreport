@@ -2,14 +2,11 @@
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 import mysql from 'mysql2/promise';
+import pool from '../../lib/db.js'; 
+
 
 // สร้างฟังก์ชัน query สำหรับเชื่อมต่อฐานข้อมูล
-const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'hrd',
-});
+
 
 async function query(sql, params) {
   const [results] = await pool.execute(sql, params);

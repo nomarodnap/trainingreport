@@ -1,13 +1,10 @@
 // pages/api/updateUserProfile.js
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
+import db from '../../lib/db';
 
-const db = await mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'hrd',
-});
+
+
 
 export default async function handler(req, res) {
   if (req.method === 'PUT') {

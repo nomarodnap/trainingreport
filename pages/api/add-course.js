@@ -1,4 +1,6 @@
 import mysql from "mysql2/promise";
+import connection from '../../lib/db.js';
+
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,12 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const connection = await mysql.createConnection({
-      host: "localhost",
-      user: "root",
-      password: "",
-      database: "hrd",
-    });
+    
 
     const [result] = await connection.execute(
       "INSERT INTO course1 (code_cou, name_cou, category, id_extage, id_learn) VALUES (?, ?, ?, ?, ?)",

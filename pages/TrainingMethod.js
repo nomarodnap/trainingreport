@@ -1,4 +1,4 @@
-﻿import './styles.css';
+import './styles.css';
 import { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import axios from 'axios';

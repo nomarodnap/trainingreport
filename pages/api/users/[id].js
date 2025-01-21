@@ -1,4 +1,4 @@
-import db from './db'; // เชื่อมต่อฐานข้อมูล
+import db from '../../../lib/db'; // เชื่อมต่อฐานข้อมูล (คุณอาจต้องปรับตามโปรเจกต์ของคุณ)
 
 export default async function handler(req, res) {
     const { id } = req.query; // ดึง id จาก URL

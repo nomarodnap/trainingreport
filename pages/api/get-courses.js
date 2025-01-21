@@ -1,11 +1,7 @@
 import mysql from 'mysql2/promise';
+import dbConfig from '../../lib/db.js'; 
 
-const dbConfig = {
-  host: 'localhost',
-  user: 'root', // แทนด้วยชื่อผู้ใช้ MySQL
-  password: '', // แทนด้วยรหัสผ่าน MySQL
-  database: 'hrd', // แทนด้วยชื่อฐานข้อมูล
-};
+
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
