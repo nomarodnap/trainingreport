@@ -1,568 +1,957 @@
 import './styles.css';
-import { useEffect, useState } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import th from 'date-fns/locale/th';
+import { format, sub } from 'date-fns'; 
+import TrainingMethod from './TrainingMethod';
+import axios from "axios";
+import { useParams } from 'react-router-dom';
+import { useLocation } from "react-router-dom";
 import { useRouter } from "next/router";
 import Header from '../components/Header';
 
 
-export default function DirectReport() {
-    const [reports, setReports] = useState([]);
-    const [username, setUsername] = useState('');
-    const [userDetails, setUserDetails] = useState(null); 
-    const [showTable, setShowTable] = useState(1); // สถานะสำหรับแสดงตาราง (1: ตารางหลัก, 2: ตารางที่สอง)
-    const router = useRouter();
-const [filters, setFilters] = useState([
-    { field: "id", value: "" },
-]);
+registerLocale('th', th);
 
-const [currentPage, setCurrentPage] = useState(1); // หน้าปัจจุบัน
-const rowsPerPage = 20; // จำนวนแถวต่อหน้า
+
+
+
+const Form = () => {
+  const router = useRouter();
+  const { id } = router.query; // ดึง ID จาก URL
+
+
+  const [username, setUsername] = useState('');
+  const [trainingOrgs, setTrainingOrgs] = useState([]); // รายชื่อหน่วยงาน
+  const [loading, setLoading] = useState(false); // สถานะการโหลดข้อมูล
+  const [error, setError] = useState(null); // ข้อผิดพลาด
+  const [exteagencies, setExteagencies] = useState([]);
+  const [trainingOrg, setTrainingOrg] = useState(''); // ค่า id_extage
+  const [organizations, setOrganizations] = useState([]); // รายการหน่วยงาน  
+  const [agencies, setAgencies] = useState([]); // หน่วยงานที่จัดฝึกอบรม
+  const [courses, setCourses] = useState([]); // วิชา
+  const [selectedAgency, setSelectedAgency] = useState(''); // id_extage ที่เลือก
+  const [filteredCourses, setFilteredCourses] = useState([]); // วิชาที่กรองตาม id_extage
+  const [internalChecked, setInternalChecked] = useState(false);
+  const [externalChecked, setExternalChecked] = useState(false);
+  const [internalBudget, setInternalBudget] = useState('');
+  const [externalBudget, setExternalBudget] = useState('');
+  const [externalAgency, setExternalAgency] = useState('');
+  const [planBudget, setPlanBudget] = useState('');
+  const [projectOutput, setProjectOutput] = useState('');
+  const [mainActivity, setMainActivity] = useState('');
+  const [subActivity, setSubActivity] = useState('');
+  const [selectedOrg, setSelectedOrg] = useState('');
+  const [formLoading, setFormLoading] = useState(false); // สถานะการโหลดข้อมูลสำหรับฟอร์ม
+  const [certificateFile, setCertificateFile] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState("");
+
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+
+    if (file) {
+      if (!allowedTypes.includes(file.type)) {
+        setErrorMessage("กรุณาอัพโหลดไฟล์ที่เป็นรูปภาพ (JPEG, PNG) หรือ PDF เท่านั้น");
+        setCertificateFile(null); // เคลียร์ไฟล์ที่ไม่ถูกต้อง
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // จำกัดขนาดไฟล์ที่ 5MB
+        setErrorMessage("ไฟล์ต้องมีขนาดไม่เกิน 5MB");
+        setCertificateFile(null); // เคลียร์ไฟล์ที่ใหญ่เกินไป
+        return;
+      }
+
+      setCertificateFile(file);
+      setErrorMessage(""); // เคลียร์ข้อความแจ้งเตือนเมื่อไฟล์ถูกต้อง
+    }
+  };
+
+
+
+
+
+
+
+
+
+
+  const handleCheckboxChange = (type) => {
+    if (type === 'internal') {
+      setInternalChecked(!internalChecked);
+      if (internalChecked) setInternalBudget('');
+    } else if (type === 'external') {
+      setExternalChecked(!externalChecked);
+      if (externalChecked) {
+        setExternalBudget('');
+        setExternalAgency('');
+      }
+    }
+  };
+
+
+const handleAgencyInput = (e) => {
+  const value = e.target.value;
+  setFormData({ ...formData, externalAgency: value }); // อัปเดตค่าหน่วยงานใน formData
+};
+
+
+
+
+
+
+
+  useEffect(() => {
+    const fetchAgencies = async () => {
+      const response = await fetch("/api/getAgencies");
+      const data = await response.json();
+      setAgencies(data);
+    };
+
+    fetchAgencies();
+  }, []);
+
+
+
+  const fetchCourses = async (id_extage) => {
+    const response = await fetch(`/api/getCourses?id_extage=${id_extage}`);
+    const data = await response.json();
+    setCourses(data);
+  };
 
 
 useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (!storedUsername) {
-        // ถ้ายังไม่ได้ login ให้ redirect ไปที่หน้า signin
-        router.push('/signin');
-    } else {
-        setUsername(storedUsername);
+  if (selectedAgency) {
+    fetchCourses(selectedAgency);
+  }
+}, [selectedAgency]);
+
+
+
+
+
+
+
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch('/api/getOrganizations'); // คุณต้องสร้าง API สำหรับดึงหน่วยงาน
+      const data = await response.json();
+      setOrganizations(data);
+    } catch (error) {
+      console.error('Failed to fetch organizations:', error);
     }
+  };
+
+
+
+const handleAgencyChange = (event) => {
+  const selectedIdExtage = event.target.value;
+  setSelectedAgency(selectedIdExtage); // บันทึก id_extage ที่เลือก
+  fetchCourses(selectedIdExtage); // เรียก API เพื่ออัปเดต courses
+};
+
+
+  useEffect(() => {
+    fetchOrganizations(); // ดึงรายการหน่วยงานตอนโหลดหน้า
+  }, []);
+
+  useEffect(() => {
+    if (trainingOrg) {
+      fetchCourses(trainingOrg); // ดึงรายการวิชาเมื่อ trainingOrg เปลี่ยน
+    }
+  }, [trainingOrg]);
+
+
+
+useEffect(() => {
+  const initializeData = async () => {
+    try {
+      const [orgResponse, agenciesResponse] = await Promise.all([
+        fetch('/api/getOrganizations'),
+        fetch('/api/getExteagencies'),
+      ]);
+
+      const organizations = await orgResponse.json();
+      const exteagencies = await agenciesResponse.json();
+
+      setOrganizations(organizations);
+      setExteagencies(exteagencies);
+
+      const storedUsername = localStorage.getItem('username');
+      if (storedUsername) setUsername(storedUsername);
+    } catch (error) {
+      console.error("Failed to initialize data:", error);
+    }
+  };
+
+  initializeData();
 }, []);
+
+
+  const handleOrgChange = async (e) => {
+    const id_extage = e.target.value;
+    setSelectedOrg(id_extage);
+
+    // ดึงวิชาที่เกี่ยวข้องกับหน่วยงานที่เลือก
+    try {
+      const response = await fetch(`/api/getCourses?id_extage=${id_extage}`);
+      const data = await response.json();
+      setCourses(data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+
+
+
+
+
+
+  const [formData, setFormData] = useState({
+    trainingOrg: '',
+    courseCode: '',
+    trainingMethod: 'E-learning',
+    onsiteLocation: '',
+    hybridLocation: '',
+    startDate: null,
+    endDate: null,
+    costOption: 'noCost',
+    regFeeAmount: '',
+    accommodationFeeAmount: '',
+    transportationFeeAmount: '',
+    allowanceFeeAmount: '',
+    totalCost: 0,
+  internalBudget: '',
+  externalBudget: '',
+  externalAgency: '',
+  planBudget: '',
+  projectOutput: '', // เพิ่มตัวแปรนี้
+  mainActivity: '',
+  subActivity: '',
+    approvalDocumentFile: null,
+    certificateFile: null,
+    trainingCourseFile: null,
+    confirmCheckbox: false,
+    submitTime: null, // New field for submission time
+  });
+
+
+  useEffect(() => {
+    const fetchFormData = async () => {
+      console.log("Fetching form data for ID:", id); // Debug ก่อนดึงข้อมูล
+      try {
+        const response = await fetch(`/api/getFormData/${id}`);
+        const data = await response.json();
+        console.log("Data received from API:", data); // Debug หลังดึงข้อมูล
+
+        setFormData((prev) => {
+          const updatedFormData = { ...prev, ...data };
+          console.log("Updated formData:", updatedFormData); // Debug ค่า formData ที่อัปเดต
+          return updatedFormData;
+        });
+      } catch (error) {
+        console.error("Error fetching form data:", error); // Debug เมื่อเกิดข้อผิดพลาด
+      }
+    };
+
+    if (id) {
+      fetchFormData();
+    } else {
+      console.log("No ID provided, skipping data fetch."); // Debug เมื่อไม่มี ID
+    }
+  }, [id]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    console.log(`Field updated: ${name} = ${value}`); // Debug การเปลี่ยนแปลงของฟิลด์
+  };
 
   
 
-
-    useEffect(() => {
-        if (username) {
-            fetchReports();
-            fetchUserDetails(); 
-        }
-    }, [username]);
-
-const handleFilterChange = (index, key, value) => {
-    const newFilters = [...filters];
-    newFilters[index][key] = value;
-    setFilters(newFilters);
-};
-
-const addFilter = () => {
-    setFilters([...filters, { field: "id", value: "" }]);
-};
-
-const removeFilter = (index) => {
-    if (filters.length > 1) {
-        setFilters(filters.filter((_, i) => i !== index));
-    }
-};
+  const [responses, setResponses] = useState({
+    row1: 'น้อย',
+    row2: 'น้อย',
+    row3: 'น้อย',
+    row4: 'น้อย',
+    row5: 'น้อย'
+  });
 
 
-
-const calculateFiscalYear = (submitTime) => {
-    const date = new Date(submitTime);
-    let year = date.getFullYear() + 543; // แปลงปี ค.ศ. เป็น พ.ศ.
-    const month = date.getMonth(); // เดือนเริ่มจาก 0 (มกราคม)
-
-    // ถ้าเดือนตั้งแต่ตุลาคม (9) เป็นต้นไป ให้บวกปีอีก 1
-    if (month >= 9) {
-        year += 1;
-    }
-
-
-    return year;
-};
-
-
-
-const filteredReports = reports.filter((report) =>
-    filters.every((filter) => {
-        if (!filter.value) return true; // ข้ามเงื่อนไขที่ไม่มีค่าค้นหา
-
-        if (filter.field === "fiscalYear") {
-            const fiscalYear = calculateFiscalYear(report.submitTime);
-            return fiscalYear.toString().includes(filter.value);
-        }
-
-        const fieldValue = report[filter.field]?.toString().toLowerCase();
-        return fieldValue?.includes(filter.value.toLowerCase());
-    })
-);
-
-
-
-
-    const fetchReports = async () => {
-        try {
-            const response = await axios.get('/api/reports');
-            const filteredReports = response.data
-                .filter((report) => report.username === username)
-                .sort((a, b) => b.id - a.id); 
-            setReports(filteredReports);
-        } catch (error) {
-            console.error('Error fetching reports:', error);
-        }
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/courses');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCourses(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
     };
 
+    fetchCourses();
+  }, []);
 
-    const fetchUserDetails = async () => {
-        try {
-            const response = await axios.get(`/api/users?username=${username}`);
-            setUserDetails(response.data);
-        } catch (error) {
-            console.error('Error fetching user details:', error);
-        }
-    };
+  const handleDateChange = (date, name) => {
+    setFormData(prevState => ({ ...prevState, [name]: date }));
+  };
+
+  const convertToBuddhistYear = (date) => {
+    if (!date) return '';
+    return format(date, 'dd/MM/yyyy').replace(/([0-9]{4})/, (year) => +year + 543);
+  };
 
 
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
 
-const handleToggleTable = (tableNumber) => {
-    setShowTable(tableNumber); // แสดงตารางตามหมายเลขที่เลือก
+
+
+const handleInputChange = (e) => {
+  const { name, type, value, checked, files } = e.target;
+
+  const inputValue = type === "checkbox"
+    ? checked
+    : type === "file"
+    ? files[0]
+    : value;
+
+  setFormData((prevState) => ({
+    ...prevState,
+    [name]: inputValue,
+  }));
 };
 
 
+  const handleRadioChange = (e) => {
+    const { name, value } = e.target;
+    setResponses((prevState) => ({
+      ...prevState,
+      [name]: value
+    }));
+  };
 
-const redirectToEditForm = (id) => {
-  console.log("This function is called"); // เพิ่ม Debug ตรงนี้
-  console.log("Edit button clicked with ID:", id);
+
+  const calculateTotalCost = () => {
+    const regFee = parseFloat(formData.regFeeAmount.replace(/,/g, '')) || 0;
+    const accommodationFee = parseFloat(formData.accommodationFeeAmount.replace(/,/g, '')) || 0;
+    const transportationFee = parseFloat(formData.transportationFeeAmount.replace(/,/g, '')) || 0;
+    const allowanceFee = parseFloat(formData.allowanceFeeAmount.replace(/,/g, '')) || 0;
+
+    return formData.costOption === 'hasCost' 
+      ? regFee + accommodationFee + transportationFee + allowanceFee
+      : 0;
+  };
+
+  useEffect(() => {
+    setFormData(prevState => ({
+      ...prevState,
+      totalCost: calculateTotalCost(),
+    }));
+  }, [
+    formData.regFeeAmount,
+    formData.accommodationFeeAmount,
+    formData.transportationFeeAmount,
+    formData.allowanceFeeAmount,
+    formData.costOption,
+  ]);
 
 
-  if (!id) {
-    console.log("ID is not defined, cannot navigate to form.");
+
+
+  
+const handleSubmit = async (event) => {
+  event.preventDefault();
+
+  // ตรวจสอบเงื่อนไขต่าง ๆ
+  if (!formData.confirmCheckbox) {
+    alert("กรุณายอมรับเงื่อนไขก่อนส่งข้อมูล");
     return;
   }
 
-  setTimeout(() => {
-       console.warn("Redirecting to form page now...");
-    router.push(`/edit?id=${id}`);
-  }, 500); // รอ 500ms ก่อนเปลี่ยนหน้า
-};
+  if (!formData.startDate || !formData.endDate) {
+    alert("กรุณาระบุวันที่เริ่มต้นและสิ้นสุด");
+    return;
+  }
 
+  if (!formData.trainingOrg || !formData.courseCode) {
+    alert("กรุณาเลือกหน่วยงานและวิชาฝึกอบรม");
+    return;
+  }
 
+  if (!certificateFile) {
+    alert("กรุณาอัพโหลดประกาศนียบัตรก่อนส่งฟอร์ม");
+    return;
+  }
 
-const calculateTotalCost = () => {
-    return reports.reduce((total, report) => total + (Number(report.totalCost) || 0), 0);
-};
+  // ดึงค่าที่เลือกจากฟอร์มสำหรับ "การนำความรู้ไปใช้ประโยชน์"
+  const knowledgeUsage = Array.from({ length: 5 }).map((_, index) => {
+    const radios = document.getElementsByName(`row${index + 1}`);
+    const selected = Array.from(radios).find((radio) => radio.checked);
+    return selected ? selected.value : null; // Return the value or null if not selected
+  });
 
+  const currentTime = new Date();
+  const selectedCourse = courses.find(
+    (course) => course.code_cou === formData.courseCode
+  );
+  const category = selectedCourse ? selectedCourse.category : ""; // กำหนดค่าเริ่มต้นของ category
 
-const deleteReport = async (id) => {
-    if (window.confirm("Are you sure you want to delete this report?")) {
-        try {
-            await axios.delete(`/api/reports?id=${id}`);
-            setReports((prevReports) => prevReports.filter((report) => report.id !== id));
-            toast.success("Report deleted successfully!");
-        } catch (error) {
-            toast.error("Error deleting report. Please try again.");
-            console.error('Error deleting report:', error);
-        }
+  try {
+    // อัปโหลดประกาศนียบัตร
+    setUploading(true);
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", certificateFile);
+
+    const uploadResponse = await fetch("/api/upload-certificate", {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("การอัปโหลดล้มเหลว");
     }
+
+    const { fileUrl } = await uploadResponse.json(); // URL ของไฟล์ที่อัปโหลดสำเร็จ
+
+    // เตรียมข้อมูลสำหรับส่งไปยังฐานข้อมูล
+    const data = {
+      username: localStorage.getItem("username") || "",
+      trainingOrg: agencies.id_extage || formData.trainingOrg,
+      courseCode: selectedCourse
+        ? `${selectedCourse.code_cou} - ${selectedCourse.name_cou}`
+        : formData.courseCode,
+      category: category,
+      trainingMethod: formData.trainingMethod,
+      onsiteLocation: formData.onsiteLocation,
+      hybridLocation: formData.hybridLocation,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      costOption: formData.costOption,
+      regFeeAmount: formData.regFeeAmount,
+      accommodationFeeAmount: formData.accommodationFeeAmount,
+      transportationFeeAmount: formData.transportationFeeAmount,
+      allowanceFeeAmount: formData.allowanceFeeAmount,
+      totalCost: formData.totalCost,
+      internalBudget: formData.internalBudget,
+      externalBudget: formData.externalBudget,
+      externalAgency: formData.externalAgency,
+      planBudget: formData.planBudget,
+      projectOutput: formData.projectOutput,
+      mainActivity: formData.mainActivity,
+      subActivity: formData.subActivity,
+      approvalDocumentFile: formData.approvalDocumentFile,
+      submitTime: currentTime,
+      knowledgeUsage, // เพิ่มข้อมูลนี้ใน payload
+      certificate_url: fileUrl, // เพิ่ม URL ของประกาศนียบัตร
+    };
+
+    // ส่งข้อมูลไปยัง API
+    const response = await fetch("/api/submitForm", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("การบันทึกข้อมูลล้มเหลว");
+    }
+
+    const result = await response.json();
+    console.log(result.message);
+    alert("ส่งข้อมูลสำเร็จ");
+    window.location.href = "/";
+  } catch (error) {
+    console.error("Error:", error);
+    alert("เกิดข้อผิดพลาด: " + error.message);
+  } finally {
+    setUploading(false);
+  }
 };
 
 
-const startIndex = (currentPage - 1) * rowsPerPage;
-const currentReports = filteredReports.slice(startIndex, startIndex + rowsPerPage);
-const totalPages = Math.ceil(filteredReports.length / rowsPerPage);
 
 
-    return (
+
+  return (
+
 <>
-            <Header />
+    <Header />
 
-    <ToastContainer />
+            
 
+<div className="bg-gradient-to-r from-navy via-blue-600 to-cyan-400 min-h-screen flex items-center justify-center py-10">
+  <div className="bg-white shadow-xl rounded-lg w-full max-w-3xl p-8">
 
+    <h1 className="text-4xl font-extrabold text-center mb-8 text-blue-800">กรอกแบบฟอร์มรายงานผลการฝึกอบรม</h1>
+    {loading && <p className="text-blue-500">กำลังโหลดข้อมูล...</p>}
+    {error && <p className="text-red-500">{error}</p>}
 
-<div className="container mx-auto p-6 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg shadow-lg">
-    <h1 className="text-2xl font-bold mb-4 text-center">Training Reports for {username}</h1>
-
-
-
-
-    {/* User Details Section */}
-    {userDetails && (
-<div className="mb-4 p-4 bg-white text-gray-800 rounded-lg shadow">
-    <h2 className="text-lg font-semibold mb-3">ข้อมูลผู้ใช้รหัส:  {userDetails.id || "N/A"}</h2>
-    <div className="grid grid-cols-4 gap-4 text-sm">
-        <div><strong>ชื่อ-นามสกุล:</strong> {userDetails.first_name} {userDetails.last_name}</div>
-        <div><strong>เบอร์โทรศัพท์:</strong> {userDetails.phone_number || "N/A"}</div>
-        <div><strong>ตำแหน่ง:</strong> {userDetails.position || "N/A"}</div>
-        <div><strong>ระดับ:</strong> {userDetails.level || "N/A"}</div>
-        <div><strong>สำนัก/กอง/ศูนย์:</strong> {userDetails.department || "N/A"}</div>
-        <div><strong>กลุ่ม/ฝ่าย:</strong> {userDetails.group_name || "N/A"}</div>
-        <div><strong>หน่วยงานภายใต้กอง 1:</strong> {userDetails.under_department1 || "N/A"}</div>
-        <div><strong>หน่วยงานภายใต้กอง 2:</strong> {userDetails.under_department2 || "N/A"}</div>
-    </div>
-<div className="flex justify-end mt-6 space-x-4">
-    {userDetails?.status === 'admin' && (
-        <>
-            <button
-                onClick={() => window.location.href = '/reports'}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-5 rounded-lg text-md md:text-lg transition-all duration-200 shadow-lg"
-            >
-                เช็ครายงานทั้งหมด
-            </button>
-            <button
-                onClick={() => window.location.href = '/users'}
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-5 rounded-lg text-md md:text-lg transition-all duration-200 shadow-lg"
-            >
-                จัดการผู้ใช้
-            </button>
-    <button
-        onClick={() => window.location.href = '/add-course'}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg text-md md:text-lg transition-all duration-200 shadow-lg"
-    >
-        เพิ่มวิชา
-    </button>
-
-        </>
-    )}
-
-    {userDetails?.status === 'approver' && (
-        <>
-    <button
-        onClick={() => window.location.href = '/approve'}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg text-md md:text-lg transition-all duration-200 shadow-lg"
-    >
-        อนุมัติการฝึกอบรม
-    </button>
-
-        </>
-    )}
-    <button
-        onClick={() => window.location.href = '/form'}
-        className="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg text-md md:text-lg transition-all duration-200 shadow-lg"
-    >
-        เพิ่มแบบ กบค
-    </button>
-</div>
+    <form onSubmit={handleSubmit} className="space-y-6">
 
 
 
-<div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-    {filters.map((filter, index) => (
-        <div key={index} className="flex items-center space-x-2">
-            <select
-                value={filter.field}
-                onChange={(e) => handleFilterChange(index, "field", e.target.value)}
-                className="border px-4 py-2 rounded"
-            >
-                <option value="id">รหัสรายงาน</option>
-                <option value="fiscalYear">ปีงบประมาณ</option>
-                <option value="courseCode">วิชา</option>
-                <option value="category">หมวด</option>
-                <option value="trainingOrg">หน่วยงานที่จัด</option>
-                <option value="trainingMethod">วิธีการอบรม</option>
-                <option value="hybridLocation">สถานที่อบรม</option>
-                <option value="category">วันที่เริ่มอบรม</option>
-                <option value="category">วันที่สิ้นสุดการอบรม</option>
-                <option value="state">สถานะ</option>
-                <option value="regFeeAmount">ค่าลงทะเบียน</option>
-                <option value="accommodationFeeAmount">ค่าที่พัก</option>
-                <option value="transportationFeeAmount">ค่าเดินทาง</option>
-                <option value="allowanceFeeAmount">ค่าเบี้ยเลี้ยง</option>
-                <option value="totalCost">รวมค่าใช้จ่าย</option>
-                <option value="internalBudget">เบิกงบจากกรมประมง</option>
-                <option value="externalAgency">หน่วยงานอื่นที่สนับสนุนงบ</option>
-                <option value="externalBudget">เบิกงบจากหน่วยงานอื่น</option>
-                <option value="planBudget">เบิกจ่ายงบจากแผนงาน</option>
-                <option value="projectOutput">ผลผลิต/โครงการ</option>
-                <option value="mainActivity">กิจกรรมหลัก</option>
-                <option value="subActivity">กิจกรรมย่อย</option>
-                <option value="knowledgeSelfDevelop">พัฒนาตนเอง</option>
-                <option value="knowledgeWorkImprove">พัฒนางาน</option>
-                <option value="knowledgeTeamwork">ได้ความรู้</option>
-                <option value="knowledgeEfficiency">ประสิทธิผล</option>
-                <option value="knowledgeNetworking">บูรณาการ</option>
-            </select>
-            <input
-                type="text"
-                value={filter.value}
-                onChange={(e) => handleFilterChange(index, "value", e.target.value)}
-                placeholder="ค้นหา..."
-                className="border px-4 py-2 rounded flex-grow"
-            />
-            <button
-                onClick={() => removeFilter(index)}
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
-            >
-                ลบ
-            </button>
-        </div>
-    ))}
-</div>
-
-
-<div className="mb-4">
-    <button
-        onClick={addFilter}
-        className="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-4 rounded"
-    >
-        เพิ่มเงื่อนไข
-    </button>
-</div>
-
-
-
-
-
-</div>
-
-    )}
-  {showTable === 1 && (
-    <table className="min-w-full bg-white text-gray-800 rounded-lg shadow-lg">
-<thead>
-    <tr className="bg-blue-800 text-white">
-        <th className="py-3 px-4 border-b border-gray-200">รหัสรายงาน</th>
-        <th className="py-3 px-4 border-b border-gray-200">ปีงบประมาณ</th>
-        <th className="py-3 px-4 border-b border-gray-200">วิชา</th>
-        <th className="py-3 px-4 border-b border-gray-200">หมวด</th>
-        <th className="py-3 px-4 border-b border-gray-200">หน่วยงานที่จัด</th>
-        <th className="py-3 px-4 border-b border-gray-200">วิธีการอบรม</th>
-        <th className="py-3 px-4 border-b border-gray-200">สถานที่อบรม</th>
-        <th className="py-3 px-4 border-b border-gray-200">วันที่เริ่มอบรม</th>
-        <th className="py-3 px-4 border-b border-gray-200">วันที่สิ้นสุดการอบรม</th>
-        <th className="py-3 px-4 border-b border-gray-200">ประกาศนียบัตร</th> {/* เพิ่มหัวข้อ Certificate */}
-        <th className="py-3 px-4 border-b border-gray-200">สถานะ</th>
-        <th className="py-3 px-4 border-b border-gray-200">ดำเนินการ</th>
-    </tr>
-</thead>
-<tbody>
-    {currentReports.map((report, index) => (
-        <tr key={report.id} className={index % 2 === 0 ? 'bg-gray-100' : 'bg-blue-100'}>
-        <td className="border px-4 py-2 text-center">
-            <a
-                href={`/api/pdf/${report.id}`} // ลิงก์ที่ส่ง primary key
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-            >
-                {report.id}
-            </a>
-        </td>
-            <td className="border px-4 py-2 text-center">{calculateFiscalYear(report.submitTime)}</td>
-            <td className="border px-4 py-2 text-center">{report.courseCode}</td>
-            <td className="border px-4 py-2 text-center">{report.category}</td>
-            <td className="border px-4 py-2 text-center">{report.trainingOrg}</td>
-            <td className="border px-4 py-2 text-center">{report.trainingMethod}</td>
-            <td className="border px-4 py-2 text-center">{report.hybridLocation || "N/A"}</td>
-            <td className="border px-4 py-2 text-center">{formatDate(report.startDate)}</td>
-            <td className="border px-4 py-2 text-center">{formatDate(report.endDate)}</td>
-            <td className="border px-4 py-2 text-center">
-                {report.certificate_url ? (
-                    <a
-                        href={report.certificate_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                    >
-                        View
-                    </a>
-                ) : (
-                    "N/A"
-                )}
-            </td> {/* แสดงลิงก์ Certificate */}
-<td 
-    className={`border px-4 py-2 text-center font-semibold 
-        ${
-            report.state === "อนุมัติแล้ว" ? "text-green-600" :
-            report.state === "ไม่อนุมัติ" ? "text-red-600" :
-            "text-yellow-500"
-        }
-    `}
->
-    {report.state || "รออนุมัติ"}
-</td>
-            <td className="border px-4 py-2 text-center">
-                <button
-                    onClick={() => redirectToEditForm(report.id)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg ml-2"
-                >
-                    แก้ไข
-                </button>
-                <button
-                    onClick={() => deleteReport(report.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg"
-                >
-                    ลบ
-                </button>
-            </td>
-        </tr>
-    ))}
-
-
-</tbody>
-    </table>
-                )}
-{showTable === 2 && (
-    <table className="min-w-full bg-white text-gray-800 rounded-lg shadow-lg">
-        <thead>
-            <tr className="bg-blue-800 text-white">
-                <th className="py-3 px-4 border-b border-gray-200">รหัสรายงาน</th>
-	        	<th className="py-3 px-4 border-b border-gray-200">ปีงบประมาณ</th>
-                <th className="py-3 px-4 border-b border-gray-200">วิชา</th>
-                <th className="py-3 px-4 border-b border-gray-200">ค่าลงทะเบียน</th>
-                <th className="py-3 px-4 border-b border-gray-200">ค่าที่พัก</th>
-                <th className="py-3 px-4 border-b border-gray-200">ค่าเดินทาง</th>
-                <th className="py-3 px-4 border-b border-gray-200">ค่าเบี้ยเลี้ยง</th>
-                <th className="py-3 px-4 border-b border-gray-200">รวมค่าใช้จ่าย</th>
-                <th className="py-3 px-4 border-b border-gray-200">เบิกงบจากกรมประมง</th>
-                <th className="py-3 px-4 border-b border-gray-200">หน่วยงานอื่นที่สนับสนุนงบ</th>
-                <th className="py-3 px-4 border-b border-gray-200">เบิกงบจากหน่วยงานอื่น</th>
-        <th className="py-3 px-4 border-b border-gray-200">ดำเนินการ</th>
-            </tr>
-        </thead>
-        <tbody>
-            {currentReports.map((report) => (
-                <tr key={report.id}>
-        <td className="border px-4 py-2 text-center">
-            <a
-                href={`/api/pdf/${report.id}`} // ลิงก์ที่ส่ง primary key
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-            >
-                {report.id}
-            </a>
-        </td>
-		            <td className="border px-4 py-2 text-center">{calculateFiscalYear(report.submitTime)}</td>
-                    <td className="border px-4 py-2 text-center">{report.courseCode}</td>
-                    <td className="border px-4 py-2 text-center">{report.regFeeAmount || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.accommodationFeeAmount || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.transportationFeeAmount || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.allowanceFeeAmount || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.totalCost || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.internalBudget || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.externalAgency || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.externalBudget || "N/A"}</td>
-            <td className="border px-4 py-2 text-center">
-                <button
-                    onClick={() => redirectToEditForm(report.id)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg ml-2"
-                >
-                    แก้ไข
-                </button>
-                <button
-                    onClick={() => deleteReport(report.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg"
-                >
-                    ลบ
-                </button>
-            </td>
-                </tr>
-            ))}
-
-    <tr className="bg-gray-300">
-        <td colSpan="7" className="border px-4 py-2 font-bold text-right">จำนวนเงินทั้งสิ้น:</td>
-        <td className="border px-4 py-2 font-bold text-center">{calculateTotalCost()}</td>
-	<td></td>
-	<td></td><td></td>
-                                        <td>
-                                </td>
-
-
-    </tr>
-        </tbody>
-    </table>
-)}
-
-{showTable === 3 && (
-    <table className="min-w-full bg-white text-gray-800 rounded-lg shadow-lg mt-4">
-        <thead>
-            <tr className="bg-blue-800 text-white">
-                <th className="py-3 px-4 border-b border-gray-200">รหัสรายงาน</th>
-		        <th className="py-3 px-4 border-b border-gray-200">ปีงบประมาณ</th>
-                <th className="py-3 px-4 border-b border-gray-200">วิชา</th>
-                <th className="py-3 px-4 border-b border-gray-200">เบิกจ่ายงบจากแผนงาน</th>
-                <th className="py-3 px-4 border-b border-gray-200">ผลผลิต/โครงการ</th>
-                <th className="py-3 px-4 border-b border-gray-200">กิจกรรมหลัก</th>
-                <th className="py-3 px-4 border-b border-gray-200">กิจกรรมย่อย</th>
-                <th className="py-3 px-4 border-b border-gray-200">พัฒนาตนเอง</th>
-                <th className="py-3 px-4 border-b border-gray-200">พัฒนางาน</th>
-                <th className="py-3 px-4 border-b border-gray-200">ได้ความรู้</th>
-                <th className="py-3 px-4 border-b border-gray-200">ประสิทธิผล</th>
-                <th className="py-3 px-4 border-b border-gray-200">บูรณาการ</th>
-        <th className="py-3 px-4 border-b border-gray-200">ดำเนินการ</th>
-            </tr>
-        </thead>
-        <tbody>
-            {currentReports.map((report) => (
-                <tr key={report.id}>
-        <td className="border px-4 py-2 text-center">
-            <a
-                href={`/api/pdf/${report.id}`} // ลิงก์ที่ส่ง primary key
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-            >
-                {report.id}
-            </a>
-        </td>
-		            <td className="border px-4 py-2 text-center">{calculateFiscalYear(report.submitTime)}</td>
-                    <td className="border px-4 py-2 text-center">{report.courseCode}</td>
-                    <td className="border px-4 py-2 text-center">{report.planBudget || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.projectOutput || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.mainActivity || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.subActivity || "N/A"}</td>
-                    <td className="border px-4 py-2 text-center">{report.knowledgeSelfDevelop}</td>
-                    <td className="border px-4 py-2 text-center">{report.knowledgeWorkImprove}</td>
-                    <td className="border px-4 py-2 text-center">{report.knowledgeTeamwork}</td>
-                    <td className="border px-4 py-2 text-center">{report.knowledgeEfficiency}</td>
-                    <td className="border px-4 py-2 text-center">{report.knowledgeNetworking}</td>
-
-            <td className="border px-4 py-2 text-center">
-                <button
-                    onClick={() => redirectToEditForm(report.id)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg ml-2"
-                >
-                    แก้ไข
-                </button>
-                <button
-                    onClick={() => deleteReport(report.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-full transition duration-200 transform hover:scale-105 shadow-lg"
-                >
-                    ลบ
-                </button>
-            </td>
-                </tr>
-            ))}
-        </tbody>
-    </table>
-)}
-
-<div className="flex space-x-2">
-    <button onClick={() => handleToggleTable(1)} className="bg-blue-500 text-white py-1 px-3 rounded">ตาราง 1</button>
-    <button onClick={() => handleToggleTable(2)} className="bg-blue-500 text-white py-1 px-3 rounded">ตาราง 2</button>
-    <button onClick={() => handleToggleTable(3)} className="bg-blue-500 text-white py-1 px-3 rounded">ตาราง 3</button>
-</div>
-
-<div className="flex justify-between items-center mt-4">
-    <button
-        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-        className={`py-2 px-4 rounded ${
-            currentPage === 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
-        }`}
-        disabled={currentPage === 1}
-    >
-        Previous
-    </button>
-    <span className="text-white font-semibold">
-        Page {currentPage} of {totalPages}
-    </span>
-    <button
-        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-        className={`py-2 px-4 rounded ${
-            currentPage === totalPages ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
-        }`}
-        disabled={currentPage === totalPages}
-    >
-        Next
-    </button>
-</div>
-
-        </div>
-</>
+<div className="mb-6">
+  {/* Dropdown สำหรับเลือกหน่วยงานที่จัดฝึกอบรม */}
+  <label
+    htmlFor="trainingOrg"
+    className="block text-lg text-blue-700 font-bold"
+  >
+    หน่วยงานที่จัดฝึกอบรม:
+  </label>
+<select
+  id="trainingOrg"
+  className="mt-2 p-3 block w-full border border-cyan-300 rounded-md shadow-sm focus:ring-cyan-500 focus:border-cyan-500"
+  onChange={(e) => {
+    const selectedId = e.target.value; // ค่า id ของหน่วยงาน
+    const selectedAgency = agencies.find(
+      (agency) => `${agency.id_extage}` === selectedId
     );
-}
+
+    if (selectedAgency) {
+      setSelectedAgency(selectedId);
+      setFormData({
+        ...formData,
+        trainingOrg: `${selectedAgency.subname_extage} - ${selectedAgency.name_extage}`,
+      });
+    }
+  }}
+>
+
+    <option value="">-- กรุณาเลือก --</option>
+    {agencies.map((agency) => (
+      <option key={agency.id_extage} value={agency.id_extage}>
+        {agency.subname_extage} - {agency.name_extage}
+      </option>
+    ))}
+  </select>
+</div>
+
+<div className="mb-6">
+  {/* Dropdown สำหรับเลือกวิชา */}
+  <label htmlFor="courseCode" className="block text-lg text-blue-700 font-bold">
+    วิชา:
+  </label>
+  <select
+    id="courseCode"
+    className="mt-2 p-3 block w-full border border-cyan-300 rounded-md shadow-sm focus:ring-cyan-500 focus:border-cyan-500"
+    onChange={(e) => {
+      const selectedCode = e.target.value;
+      setFormData({
+        ...formData,
+        courseCode: selectedCode, // เก็บเฉพาะ id_macou
+      });
+    }}
+  >
+    {selectedAgency === "" ? (
+      // เมื่อยังไม่ได้เลือกหน่วยงานที่จัดฝึกอบรม
+      <option value="">-- กรุณาเลือกหน่วยงานที่จัดฝึกอบรมก่อน --</option>
+    ) : (
+      // เมื่อเลือกหน่วยงานที่จัดฝึกอบรมแล้ว
+      <>
+        <option value="">-- กรุณาเลือก --</option>
+        {courses.length > 0 ? (
+          courses.map((course) => (
+            <option key={course.id_macou} value={course.id_macou}>
+              {course.code_cou} - {course.name_cou}
+            </option>
+          ))
+        ) : (
+          <option value="">ไม่พบวิชา</option>
+        )}
+      </>
+    )}
+  </select>
+</div>
+
+
+
+          <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">วิธีการอบรม:</label>
+            <div className="mt-4 space-x-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="trainingMethod"
+                  value="E-learning"
+                  checked={formData.trainingMethod === 'E-learning'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">E-learning</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="trainingMethod"
+                  value="Online"
+                  checked={formData.trainingMethod === 'Online'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">Online</span>
+              </label>
+
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="trainingMethod"
+                  value="Onsite"
+                  checked={formData.trainingMethod === 'Onsite'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">Onsite</span>
+              </label>
+
+              {/* Add other radio buttons if needed */}
+
+              {/* Text input for Onsite location */}
+
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="trainingMethod"
+                  value="Hybrid"
+                  checked={formData.trainingMethod === 'Hybrid'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">Hybrid</span>
+              </label>
+
+              {/* Add other radio buttons if needed */}
+
+              {/* Text input for Hybrid location */}
+              <input
+                type="text"
+                name="hybridLocation"
+                value={formData.hybridLocation}
+                onChange={handleInputChange}
+                placeholder="สถานที่จัดฝึกอบรม"
+                className={`mt-4 p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  formData.trainingMethod === 'Hybrid' || formData.trainingMethod === 'Onsite' ? 'block' : 'hidden'
+                }`}
+              />
+
+            </div></div>
+
+
+        <div className="mb-6">
+          <label htmlFor="startDate" className="block text-lg text-blue-700 font-bold">วันที่เริ่มฝึกอบรม:</label>
+          <DatePicker
+            selected={formData.startDate}
+            onChange={(date) => handleDateChange(date, 'startDate')}
+            locale="th"
+            dateFormat="dd/MM/yyyy"
+            placeholderText="เลือกวันที่"
+            customInput={
+              <input
+                type="text"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-lg"
+                value={formData.startDate ? convertToBuddhistYear(formData.startDate) : ''}
+                onClick={(e) => e.preventDefault()}
+              />
+            }
+          />
+        </div>
+
+        <div className="mb-6">
+          <label htmlFor="endDate" className="block text-lg text-blue-700 font-bold">วันที่สิ้นสุดการฝึกอบรม:</label>
+          <DatePicker
+            selected={formData.endDate}
+            onChange={(date) => handleDateChange(date, 'endDate')}
+            locale="th"
+            dateFormat="dd/MM/yyyy"
+            placeholderText="เลือกวันที่"
+            customInput={
+              <input
+                type="text"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-lg"
+                value={formData.endDate ? convertToBuddhistYear(formData.endDate) : ''}
+                onClick={(e) => e.preventDefault()}
+              />
+            }
+          />
+        </div>
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">ค่าใช้จ่ายในการฝึกอบรม</label>
+            <div className="mt-4 space-x-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="costOption"
+                  value="noCost"
+                  checked={formData.costOption === 'noCost'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">ไม่มีค่าใช้จ่าย</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="costOption"
+                  value="hasCost"
+                  checked={formData.costOption === 'hasCost'}
+                  onChange={handleInputChange}
+                  className="form-radio h-5 w-5 text-cyan-600"
+                />
+                <span className="ml-2 text-blue-700">มีค่าใช้จ่าย</span>
+              </label>
+            </div>
+          </div>
+
+        {formData.costOption === 'hasCost' && (
+          <>
+            <div className="mb-6">
+              <label htmlFor="regFeeAmount" className="block text-gray-700">ค่าลงทะเบียน (บาท):</label>
+              <input type="number" id="regFeeAmount" name="regFeeAmount" value={formData.regFeeAmount} onChange={handleInputChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-lg" />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="accommodationFeeAmount" className="block text-gray-700">ค่าที่พัก (บาท):</label>
+              <input type="number" id="accommodationFeeAmount" name="accommodationFeeAmount" value={formData.accommodationFeeAmount} onChange={handleInputChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-lg" />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="transportationFeeAmount" className="block text-gray-700">ค่าเดินทาง (บาท):</label>
+              <input type="number" id="transportationFeeAmount" name="transportationFeeAmount" value={formData.transportationFeeAmount} onChange={handleInputChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-lg" />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="allowanceFeeAmount" className="block text-gray-700">ค่าเบี้ยเลี้ยง (บาท):</label>
+              <input type="number" id="allowanceFeeAmount" name="allowanceFeeAmount" value={formData.allowanceFeeAmount} onChange={handleInputChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-lg" />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="totalCost" className="block text-gray-700">ค่าใช้จ่ายรวม (บาท):</label>
+              <input type="text" id="totalCost" name="totalCost" value={formData.totalCost.toLocaleString()} readOnly className="mt-1 block w-full p-2 border border-gray-300 rounded-lg bg-gray-100" />
+            </div>
+          </>
+        )}
+
+
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">งบประมาณจาก</label>
+            <div className="mt-4 space-y-4">
+              <label className="inline-flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={internalChecked} 
+                  onChange={() => handleCheckboxChange('internal')} 
+                  className="form-checkbox h-5 w-5 text-cyan-600" 
+                />
+                <span className="ml-2 text-blue-700">ภายในกรมประมง</span>
+              </label>
+              <input 
+                type="number" 
+                value={formData.internalBudget} 
+                onChange={(e) => setFormData({ ...formData, internalBudget: e.target.value })}
+                disabled={!internalChecked} 
+                placeholder="ใส่จำนวนเงิน (บาท)" 
+                className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent" 
+              />
+            </div>
+        </div>
+
+<div className="mb-6">
+  <div className="mt-4 space-y-4">
+    <label className="inline-flex items-center">
+      <input
+        type="checkbox"
+        checked={externalChecked}
+        onChange={() => handleCheckboxChange('external')}
+        className="form-checkbox h-5 w-5 text-cyan-600"
+      />
+      <span className="ml-2 text-blue-700">ภายนอกกรมประมง</span>
+    </label>
+    <input
+      type="number"
+      value={formData.externalBudget}
+      onChange={(e) => setFormData({ ...formData, externalBudget: e.target.value })}
+      disabled={!externalChecked}
+      placeholder="ใส่จำนวนเงิน (บาท)"
+      className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent"
+    />
+    {externalChecked && (
+      <input
+        type="text"
+        value={formData.externalAgency}
+        onChange={handleAgencyInput}
+        placeholder="จากหน่วยงาน"
+        className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent"
+      />
+    )}
+  </div>
+</div>
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">เบิกจ่ายงบประมาณจากแผนงาน</label>
+            <input 
+              type="text" 
+              value={formData.planBudget} 
+              onChange={(e) => setFormData({ ...formData, planBudget: e.target.value })}  
+              placeholder="ระบุแผนงาน" 
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent" 
+            />
+        </div>
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">ผลผลิต/โครงการ</label>
+            <input 
+              type="text" 
+              value={formData.projectOutput}
+              onChange={(e) => setFormData({ ...formData, projectOutput: e.target.value })}  
+              placeholder="ระบุผลผลิตหรือโครงการ" 
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent" 
+            />
+        </div>
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">กิจกรรมหลัก</label>
+            <input 
+              type="text" 
+              value={formData.mainActivity} 
+              onChange={(e) => setFormData({ ...formData, mainActivity: e.target.value })}  
+              placeholder="ระบุกิจกรรมหลัก" 
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent" 
+            />
+        </div>
+
+        <div className="mb-6">
+            <label className="block text-lg text-blue-700 font-bold">กิจกรรมย่อย</label>
+            <input 
+              type="text" 
+              value={formData.subActivity} 
+              onChange={(e) => setFormData({ ...formData, subActivity: e.target.value })}  
+              placeholder="ระบุกิจกรรมย่อย" 
+              className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent" 
+            />
+        </div>
+
+        <h2 className="mt-5 mb-3 text-lg font-bold text-blue-700">การนำความรู้หลังจากที่ได้เข้ารับการฝึกอบรมไปใช้ประโยชน์</h2>        <table className="w-full border-collapse mb-5">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 p-3 text-blue-700">ประเภทการนำความรู้</th>
+              <th className="border border-gray-300 p-3 text-blue-700">น้อย (&lt;60%)</th>
+              <th className="border border-gray-300 p-3 text-blue-700">ปานกลาง (60-80%)</th>
+              <th className="border border-gray-300 p-3 text-blue-700">มาก (&gt;80%)</th>
+            </tr>
+          </thead>
+<tbody>
+  {[
+    "พัฒนาตนเอง/นำมาเป็นแนวทางในการปฏิบัติงาน",
+    "พัฒนา/แก้ไขปัญหา/ปรับปรุง/เปลี่ยนแปลงงานที่ปฏิบัติให้ดียิ่งขึ้น",
+    "แลกเปลี่ยนมุมมองระหว่างทีมงาน/ถ่ายทอดความรู้",
+    "เกิดการเปลี่ยนแปลงในด้านประสิทธิภาพและประสิทธิผลของงาน",
+    "สร้างเครือข่ายและบูรณาการทำงานร่วมกันภายในองค์กร"
+  ].map((detail, index) => (
+    <tr key={index}>
+      <td className="border border-gray-300 p-3 text-blue-700">{index + 1}. {detail}</td>
+      <td className="border border-gray-300 text-center">
+        <input 
+          type="radio" 
+          name={`row${index + 1}`} 
+          value="น้อย" 
+          className="form-radio h-5 w-5 text-cyan-600" 
+          defaultChecked // กำหนดค่าที่ถูกเลือกเริ่มต้น
+        />
+      </td>
+      <td className="border border-gray-300 text-center">
+        <input 
+          type="radio" 
+          name={`row${index + 1}`} 
+          value="ปานกลาง" 
+          className="form-radio h-5 w-5 text-cyan-600"
+        />
+      </td>
+      <td className="border border-gray-300 text-center">
+        <input 
+          type="radio" 
+          name={`row${index + 1}`} 
+          value="มาก" 
+          className="form-radio h-5 w-5 text-cyan-600"
+        />
+      </td>
+    </tr>
+  ))}
+</tbody>
+        </table>
+
+
+
+      <div className="mb-6">
+        <label className="block text-lg text-blue-700 font-bold">
+          ประกาศนียบัตร
+        </label>
+        <input
+          type="file"
+          id="certificateFile"
+          name="certificateFile"
+          onChange={handleFileUpload}
+          className="w-full mt-2 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:border-transparent"
+        />
+        {errorMessage && (
+          <p className="mt-2 text-red-600 font-medium">{errorMessage}</p>
+        )}
+      </div>
+
+
+
+        <div className="mb-5">
+          <label htmlFor="confirmCheckbox" className="flex items-center">
+            <input 
+              type="checkbox" 
+              id="confirmCheckbox" 
+              name="confirmCheckbox" 
+              checked={formData.confirmCheckbox} 
+              onChange={handleInputChange} 
+              className="mr-2"
+            />
+            <b>ข้าพเจ้ารับรองว่าข้อมูลและเอกสารหลักฐานนี้ มีความถูกต้องสมบูรณ์และครบถ้วนทุกประการ</b>
+          </label>
+        </div>
+
+        <div className="text-center">
+          <button 
+            type="submit" 
+	        disabled={uploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            {uploading ? "กำลังอัปโหลด..." : "ส่งข้อมูล"}
+          </button>
+      {uploadedUrl && (
+        <p className="mt-4 text-green-600">
+          อัปโหลดสำเร็จ! ลิงก์ไฟล์: <a href={uploadedUrl} target="_blank" rel="noopener noreferrer">{uploadedUrl}</a>
+        </p>
+      )}
+
+        </div>
+
+
+
+
+        </form>
+      </div>
+
+    </div>
+</>
+  );
+};
+
+export default Form;
+
