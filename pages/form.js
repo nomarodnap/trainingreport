@@ -896,7 +896,7 @@ const handleSubmit = async (event) => {
 
       <div className="mb-6">
         <label className="block text-lg text-blue-700 font-bold">
-          ประกาศนียบัตร
+          ประกาศนียบัตร (ยังใช้ไม่ได้)
         </label>
         <input
           type="file"
