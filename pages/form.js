@@ -388,9 +388,9 @@ const handleSubmit = async (event) => {
     return;
   }
 
-  if (!certificateFile) {
-    alert("กรุณาอัพโหลดประกาศนียบัตรก่อนส่งฟอร์ม");
-    return;
+//  if (!certificateFile) {
+//    alert("กรุณาอัพโหลดประกาศนียบัตรก่อนส่งฟอร์ม");
+//    return;
   }
 
   // ดึงค่าที่เลือกจากฟอร์มสำหรับ "การนำความรู้ไปใช้ประโยชน์"
