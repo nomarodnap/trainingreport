@@ -417,9 +417,9 @@ const handleSubmit = async (event) => {
       body: uploadFormData,
     });
 
-    if (!uploadResponse.ok) {
-      throw new Error("การอัปโหลดล้มเหลว");
-    }
+//    if (!uploadResponse.ok) {
+//      throw new Error("การอัปโหลดล้มเหลว");
+//    }
 
     const { fileUrl } = await uploadResponse.json(); // URL ของไฟล์ที่อัปโหลดสำเร็จ
 
