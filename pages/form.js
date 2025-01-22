@@ -391,7 +391,7 @@ const handleSubmit = async (event) => {
 //  if (!certificateFile) {
 //    alert("กรุณาอัพโหลดประกาศนียบัตรก่อนส่งฟอร์ม");
 //    return;
-  }
+//  }
 
   // ดึงค่าที่เลือกจากฟอร์มสำหรับ "การนำความรู้ไปใช้ประโยชน์"
   const knowledgeUsage = Array.from({ length: 5 }).map((_, index) => {
