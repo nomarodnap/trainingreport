@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://trainingreport.fisheries.go.th
+
+# Sitemaps
+Sitemap: https://trainingreport.fisheries.go.th/sitemap.xml

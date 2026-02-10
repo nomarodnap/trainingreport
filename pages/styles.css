@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SVG Wave Animations */
+@keyframes waveMove1 {
+  0% {
+    transform: translateX(0px) translateY(0px);
+  }
+  25% {
+    transform: translateX(-10px) translateY(-2px);
+  }
+  50% {
+    transform: translateX(-20px) translateY(0px);
+  }
+  75% {
+    transform: translateX(-10px) translateY(2px);
+  }
+  100% {
+    transform: translateX(0px) translateY(0px);
+  }
+}
+
+@keyframes waveMove2 {
+  0% {
+    transform: translateX(0px) translateY(0px);
+  }
+  25% {
+    transform: translateX(15px) translateY(1px);
+  }
+  50% {
+    transform: translateX(30px) translateY(0px);
+  }
+  75% {
+    transform: translateX(15px) translateY(-1px);
+  }
+  100% {
+    transform: translateX(0px) translateY(0px);
+  }
+}
+
+@keyframes waveMove3 {
+  0% {
+    transform: translateX(0px) translateY(0px);
+  }
+  25% {
+    transform: translateX(-20px) translateY(0.5px);
+  }
+  50% {
+    transform: translateX(-40px) translateY(0px);
+  }
+  75% {
+    transform: translateX(-20px) translateY(-0.5px);
+  }
+  100% {
+    transform: translateX(0px) translateY(0px);
+  }
+}
+
+@keyframes waveOpacity {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes waveScale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* Wave Animation Classes */
+.animate-wave-1 {
+  animation: 
+    waveMove1 8s ease-in-out infinite,
+    waveOpacity 6s ease-in-out infinite,
+    waveScale 10s ease-in-out infinite;
+}
+
+.animate-wave-2 {
+  animation: 
+    waveMove2 10s ease-in-out infinite reverse,
+    waveOpacity 8s ease-in-out infinite,
+    waveScale 12s ease-in-out infinite;
+}
+
+.animate-wave-3 {
+  animation: 
+    waveMove3 12s ease-in-out infinite,
+    waveOpacity 10s ease-in-out infinite,
+    waveScale 14s ease-in-out infinite;
+}
+
+/* Floating particles effect */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+  }
+}
+
+.floating-particle {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Background gradient animation */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient {
+  background: linear-gradient(-45deg, #f0f9ff, #e0f2fe, #f0fdf4, #ecfdf5);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+/* Wave Animation Classes */
+.wave-animation-1 {
+  animation: waveMove1 2s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.wave-animation-2 {
+  animation: waveMove2 3s ease-in-out infinite reverse;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.wave-animation-3 {
+  animation: waveMove3 4s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Smooth transitions for form elements */
+.form-container {
+  transition: all 0.3s ease-in-out;
+}
+
+.form-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Enhanced floating particles */
+.floating-particle {
+  animation: float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Responsive wave adjustments */
+@media (max-width: 768px) {
+  .animate-wave-1,
+  .animate-wave-2,
+  .animate-wave-3 {
+    animation-duration: 12s, 8s, 10s;
+  }
+}
+
+/* Sticky table header styles - removed conflicting CSS */
