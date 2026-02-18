@@ -980,7 +980,7 @@ function DirectReport() {
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ปีงบประมาณ</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่ส่ง</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่แก้ไขล่าสุด</th>
-                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ผู้ที่แก้ไขล่าสุด</th>
+                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">รายการที่ต้องแก้ไข</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ดำเนินการ</th>
               </tr>
             </thead>
@@ -1009,7 +1009,7 @@ function DirectReport() {
 
                   <td className="border px-4 py-2 text-center">{formatDateBuddhist(report.submitTime)}</td>
                   <td className="border px-4 py-2 text-center">  {report.editTime ? formatDateBuddhist(report.editTime) : "N/A"}</td>
-                  <td className="border px-4 py-2 text-center">  {report.whoEdit ? report.whoEdit : "N/A"}</td>
+                  <td className="border px-4 py-2 text-center">  {report.note ? report.note : "N/A"}</td>
 
 
 
