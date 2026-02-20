@@ -607,6 +607,13 @@ const Form = () => {
           {loading && <p className="text-blue-500">กำลังโหลดข้อมูล...</p>}
           {error && <p className="text-red-500">{error}</p>}
 
+          {formData.formCode && (
+            <div className="text-right mb-4">
+              <span className="font-bold text-gray-700">รหัสรายงาน: </span>
+              <span className="text-blue-600 font-semibold">{formData.formCode}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
 
 

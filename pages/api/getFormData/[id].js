@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     const [rows] = await pool.query(
       `SELECT 
         username, 
+        formCode,
         trainingOrg, 
         courseCode, 
 	courseName,
