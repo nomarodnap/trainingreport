@@ -11,7 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPrint, faSave, faStickyNote } from "@fortawesome/free-solid-svg-icons";
 
 import { faEye } from "@fortawesome/free-solid-svg-icons";
-
+import Calendar from '../components/Calendar';
 
 
 
@@ -841,24 +841,18 @@ export default function ReportsPage() {
                           {["startDate", "endDate", "submitTime", "editTime"].includes(filter.field) ? (
                             <div className="flex flex-col space-y-1">
                               <label>ตั้งแต่วันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.from || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("AND", index, "from", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("AND", index, "from", value)
                                 }
-                                placeholder="เช่น 25/12/2568"
-                                className="border px-4 py-2 rounded"
                               />
                               <label>ถึงวันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.to || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("AND", index, "to", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("AND", index, "to", value)
                                 }
-                                placeholder="เช่น 24/01/2569"
-                                className="border px-4 py-2 rounded"
                               />
                             </div>
                           ) : (
@@ -955,24 +949,18 @@ export default function ReportsPage() {
                           {["startDate", "endDate", "submitTime", "editTime"].includes(filter.field) ? (
                             <div className="flex flex-col space-y-1">
                               <label>ตั้งแต่วันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.from || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("OR", index, "from", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("OR", index, "from", value)
                                 }
-                                placeholder="เช่น 25/12/2568"
-                                className="border px-4 py-2 rounded"
                               />
                               <label>ถึงวันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.to || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("OR", index, "to", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("OR", index, "to", value)
                                 }
-                                placeholder="เช่น 24/01/2569"
-                                className="border px-4 py-2 rounded"
                               />
                             </div>
                           ) : (
@@ -1068,24 +1056,18 @@ export default function ReportsPage() {
                           {["startDate", "endDate", "submitTime", "editTime"].includes(filter.field) ? (
                             <div className="flex flex-col space-y-1">
                               <label>ตั้งแต่วันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.from || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("NOT", index, "from", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("NOT", index, "from", value)
                                 }
-                                placeholder="เช่น 01/10/2568"
-                                className="border px-4 py-2 rounded"
                               />
                               <label>ถึงวันที่:</label>
-                              <input
-                                type="text"
+                              <Calendar
                                 value={filter.to || ""}
-                                onChange={(e) =>
-                                  handleFilterChange("NOT", index, "to", e.target.value)
+                                onChange={(value) =>
+                                  handleFilterChange("NOT", index, "to", value)
                                 }
-                                placeholder="เช่น 31/10/2568"
-                                className="border px-4 py-2 rounded"
                               />
                             </div>
                           ) : (
@@ -1684,7 +1666,9 @@ export default function ReportsPage() {
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ปีงบประมาณ</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่ส่ง</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่แก้ไขล่าสุด</th>
-                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ผู้ที่แก้ไขล่าสุด</th>
+                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">
+                  {(userDetails?.status === 'admin' || userDetails?.status === 'superadmin') ? "ผู้ที่แก้ไขล่าสุด" : "รายการที่ต้องแก้ไข"}
+                </th>
                 {(userDetails?.status === 'admin' || userDetails?.status === 'superadmin') && (
                   <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ดำเนินการ</th>
                 )}
@@ -1729,7 +1713,11 @@ export default function ReportsPage() {
 
                   <td className="border px-4 py-2 text-center">{formatDate(report.submitTime)}</td>
                   <td className="border px-4 py-2 text-center">  {report.editTime ? formatDate(report.editTime) : "N/A"}</td>
-                  <td className="border px-4 py-2 text-center">  {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (report.whoEdit || "N/A") : (report.whoEdit_nickname || report.whoEdit || "N/A")}</td>
+                  <td className="border px-4 py-2 text-center">
+                    {(userDetails?.status === 'admin' || userDetails?.status === 'superadmin')
+                      ? (report.whoEdit_nickname || report.whoEdit || "N/A")
+                      : (report.note || "-")}
+                  </td>
 
 
 
