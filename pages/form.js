@@ -532,7 +532,7 @@ const Form = () => {
             <div className="mb-6">
               {/* Label หลัก */}
               <label htmlFor="trainingOrg" className="block text-lg text-blue-700 font-bold">
-                หน่วยงานที่จัดฝึกอบรม<span className="text-red-500">*</span>
+                หน่วยงานภายนอกที่จัดฝึกอบรม<span className="text-red-500">*</span>
               </label>
 
               {/* Floating Label */}
