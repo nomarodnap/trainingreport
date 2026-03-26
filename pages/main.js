@@ -1,4 +1,4 @@
-﻿import './styles.css';
+import './styles.css';
 
 import { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
@@ -6,6 +6,7 @@ import axios from 'axios';
 import { useRouter } from "next/router";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import AnnouncementCarousel from '../components/AnnouncementCarousel';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPrint } from '@fortawesome/free-solid-svg-icons';
 import { faEnvelope, faPhone, faMapMarkerAlt, faBook, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
@@ -134,11 +135,26 @@ function DirectReport() {
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const { isOpen, setIsOpen } = useTour();
   const [isClient, setIsClient] = useState(false)
-
-
+  const [showCarousel, setShowCarousel] = useState(false);
+  const [carouselItems, setCarouselItems] = useState([]);
 
   useEffect(() => {
-    setIsClient(true)
+    setIsClient(true);
+    // Fetch carousel images from backend
+    const fetchCarouselImages = async () => {
+      try {
+        const response = await fetch('/api/carousel-images');
+        const data = await response.json();
+        // Allow the user to just put files, and we play them!
+        if (data && data.length > 0) {
+          setCarouselItems(data);
+          setShowCarousel(true);
+        }
+      } catch (e) {
+        console.error("Failed to load carousel images", e);
+      }
+    };
+    fetchCarouselImages();
   }, [])
 
 
@@ -458,6 +474,12 @@ function DirectReport() {
 
 
       <Header />
+      {showCarousel && (
+        <AnnouncementCarousel 
+          items={carouselItems} 
+          onClose={() => setShowCarousel(false)} 
+        />
+      )}
       {isLoadingReports && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="text-white text-lg flex items-center gap-3">

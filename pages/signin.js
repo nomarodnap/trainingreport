@@ -1,4 +1,4 @@
-﻿import './styles.css';
+import './styles.css';
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Cookies from 'js-cookie';
@@ -6,9 +6,6 @@ import Head from 'next/head';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { faKey, faQrcode, faExclamationTriangle, faHeadset } from "@fortawesome/free-solid-svg-icons";
-import AnnouncementLayout from '@/components/AnnouncementLayout';
-
-
 export default function SignIn() {
   const [credentials, setCredentials] = useState({ username: '', password: '', remember: false });
   const [error, setError] = useState(null);
@@ -125,8 +122,7 @@ export default function SignIn() {
 
 
   return (
-    <AnnouncementLayout>
-      <>
+    <>
         <Head>
           <title>ระบบรายงานผลการเข้ารับการฝึกอบรม กรมประมง</title>
           <meta name="description" content="ระบบรายงานผลการฝึกอบรม สำหรับหน่วยงานในสังกัดกรมประมง ช่วยให้เจ้าหน้าที่สามารถบันทึกและติดตามผลการพัฒนาทักษะจากการเข้ารับการฝึกอบรมได้อย่างมีประสิทธิภาพ" />
@@ -297,25 +293,9 @@ export default function SignIn() {
           <div className="text-gray-600 text-sm text-center mt-6 p-4 ">
           </div>
 
-          {/* Fixed QR Layer - Bottom Right */}
-          <div className="fixed bottom-4 right-4 z-50">
-            <div className="bg-transparent p-0 flex flex-col items-center">
-              <img
-                src="/openchat.jpg"
-                alt="กลุ่มไลน์ openchat ระบบรายงานผลฯ กบค."
-                width="180"
-                height="180"
-                className="w-[180px] h-[180px] object-contain"
-              />
-              <p className="mt-2 text-sm font-semibold text-gray-700 text-center">
-                กลุ่มไลน์ openchat <br />ระบบรายงานผลฯ
-              </p>
-            </div>
-          </div>
         </div>
 
       </>
-    </AnnouncementLayout>
 
   );
 }
