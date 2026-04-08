@@ -137,6 +137,7 @@ function DirectReport() {
   const [isClient, setIsClient] = useState(false)
   const [showCarousel, setShowCarousel] = useState(false);
   const [carouselItems, setCarouselItems] = useState([]);
+  const [hasSeenTourState, setHasSeenTourState] = useState(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -176,12 +177,17 @@ function DirectReport() {
             const res = await fetch(`/api/user?username=${username}`);
             const data = await res.json();
             console.log("📦 ข้อมูลจาก /api/user:", data);
-            if (data.isFirstLogin) {
+            
+            // Set the state directly from the API response
+            setHasSeenTourState(Number(data.hasSeenTour));
+
+            if (data.isFirstLogin || Number(data.hasSeenTour) === 0) {
               console.log("🎯 ผู้ใช้ล็อกอินครั้งแรก → เปิด Tour");
               setIsOpen(true);
             }
           } catch (err) {
             console.error("❌ ดึงข้อมูล tour ล้มเหลว:", err);
+            setHasSeenTourState(1); // Default to 1 to show UI safely
           }
         } else {
           router.push('/signin');
@@ -474,7 +480,7 @@ function DirectReport() {
 
 
       <Header />
-      {showCarousel && (
+      {showCarousel && hasSeenTourState !== null && hasSeenTourState !== 0 && !isOpen && (
         <AnnouncementCarousel 
           items={carouselItems} 
           onClose={() => setShowCarousel(false)} 

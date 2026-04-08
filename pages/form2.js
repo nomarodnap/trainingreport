@@ -936,7 +936,7 @@ const Form2 = () => {
                 <label
                   className="absolute start-3 top-3 z-10 origin-[0] -translate-y-4 scale-75 transform bg-white px-2 text-sm text-gray-400 font-normal transition-all peer-placeholder-shown:top-1/2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-3 peer-focus:scale-75 peer-focus:-translate-y-4 peer-focus:text-cyan-500 pointer-events-none"
                 >
-                  กรอก username
+                  กรอกรหัสบัตรประจำตัวประชาชน
                 </label>
 
                 {/* Popup แสดงผลการค้นหา - แสดงด้านบนของ input field */}
