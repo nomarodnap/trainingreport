@@ -126,8 +126,10 @@ useEffect(() => {
     }
 
     if (storedStatus === 'approver2') {
-        if (checkerDetails.group_name !== userDetails.group_name) {
-            console.log('Approver2 ไม่ใช่กลุ่มเดียวกัน, redirecting to index page');
+        const checkerGroup = String(checkerDetails.group_name || '').trim();
+        const userGroup = String(userDetails.group_name || '').trim();
+        if (checkerGroup !== userGroup) {
+            console.log('Approver2 ไม่ใช่กลุ่มเดียวกัน, redirecting to index page', checkerGroup, userGroup);
             router.push('/');
         }
         return;
