@@ -1,4 +1,4 @@
-﻿import '../styles.css';
+import '../styles.css';
 import { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import axios from 'axios';
@@ -113,11 +113,11 @@ useEffect(() => {
         return;
     }
 
-    if (storedStatus === 'admin' || storedStatus === 'superadmin') {
+    if (storedStatus === 'admin' || storedStatus === 'superadmin' || storedStatus === 'checker') {
         return;
     }
 
-    if (['approver', 'checker'].includes(storedStatus)) {
+    if (['approver'].includes(storedStatus)) {
         if (checkerDetails.department !== userDetails.department) {
             console.log('Approver ไม่ใช่หน่วยงานเดียวกัน, redirecting to index page');
             router.push('/');
