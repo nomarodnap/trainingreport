@@ -105,11 +105,11 @@ const [storedStatus, setStoredStatus] = useState(null);
 
 useEffect(() => {
     console.log('storedStatus:', storedStatus);
-    console.log('checkerDetails?.department:', checkerDetails?.department);
-    console.log('userDetails?.department:', userDetails?.department);
+    console.log('checkerDetails:', checkerDetails);
+    console.log('userDetails:', userDetails);
 
     // ถ้ายังโหลดไม่ครบ อย่าทำอะไร
-    if (!storedStatus || !checkerDetails?.department || !userDetails?.department) {
+    if (!storedStatus || !checkerDetails || !userDetails) {
         return;
     }
 
@@ -117,7 +117,7 @@ useEffect(() => {
         return;
     }
 
-    if (['approver'].includes(storedStatus)) {
+    if (storedStatus === 'approver') {
         if (checkerDetails.department !== userDetails.department) {
             console.log('Approver ไม่ใช่หน่วยงานเดียวกัน, redirecting to index page');
             router.push('/');
@@ -125,9 +125,17 @@ useEffect(() => {
         return;
     }
 
+    if (storedStatus === 'approver2') {
+        if (checkerDetails.group_name !== userDetails.group_name) {
+            console.log('Approver2 ไม่ใช่กลุ่มเดียวกัน, redirecting to index page');
+            router.push('/');
+        }
+        return;
+    }
+
     console.log('User is not authorized, redirecting to index page');
     router.push('/');
-}, [storedStatus, router, checkerDetails?.department, userDetails?.department]);
+}, [storedStatus, router, checkerDetails, userDetails]);
 
 	
 
