@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import './styles.css';
 import Header from '../components/Header';
 import { useEffect, useState } from "react";
@@ -49,7 +49,7 @@ export default function Dashboard() {
         const user = await res.json();
         setUsername(user.username);
 
-        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2') {
+        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2' && user.status !== 'checker') {
           alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
           router.push('/');
         }

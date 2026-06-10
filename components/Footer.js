@@ -46,7 +46,7 @@ const Footer = () => {
             <FontAwesomeIcon icon={faBook} className="mr-2 text-cyan-400" />
             คู่มือ: <a data-tour="help-section" href="/pdf-guide.pdf" target="_blank" rel="noopener noreferrer" className="underline hover:text-cyan-400">เปิดคู่มือการใช้งาน</a>
           </p>
-          {status === 'approver' && (
+          {['approver', 'checker'].includes(status) && (
             <p>
               <FontAwesomeIcon icon={faBook} className="mr-2 text-cyan-400" />
               คู่มือ(สำหรับผู้ตรวจสอบ): <a data-tour="help-section" href="/pdf-guide-approver.pdf" target="_blank" rel="noopener noreferrer" className="underline hover:text-cyan-400">เปิดคู่มือการใช้งาน</a>

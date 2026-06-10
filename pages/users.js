@@ -1,4 +1,4 @@
-﻿import './styles.css';
+import './styles.css';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router'; // ใช้สำหรับ redirect
 import axios from 'axios';
@@ -42,7 +42,7 @@ export default function UsersPage() {
           console.error('Error fetching user details:', err);
         }
 
-        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2') {
+        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2' && user.status !== 'checker') {
           alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
           router.push('/');
         }
@@ -221,16 +221,16 @@ export default function UsersPage() {
                 >
                   <option value="username">เลขบัตรประจำตัวประชาชน</option>
                   <option value="fullName">ชื่อ-สกุล</option>
-                  {!['approver', 'approver2'].includes(currentUserStatus) && (
+                  {!['approver', 'approver2', 'checker'].includes(currentUserStatus) && (
                     <option value="nickname">ชื่อเล่น</option>
                   )}
                   <option value="type">ประเภท</option>
                   <option value="positionLevel">ตำแหน่ง</option>
-                  {!['approver', 'approver2'].includes(currentUserStatus) && (
+                  {!['approver', 'approver2', 'checker'].includes(currentUserStatus) && (
                     <option value="department">สำนัก/กอง/ศูนย์</option>
                   )}
                   <option value="group_name">กลุ่ม/ฝ่าย</option>
-                  {!['approver', 'approver2'].includes(currentUserStatus) && (
+                  {!['approver', 'approver2', 'checker'].includes(currentUserStatus) && (
                     <option value="status">สถานะ</option>
                   )}
                 </select>
@@ -278,7 +278,7 @@ export default function UsersPage() {
               <th className="py-3 px-4 border-b border-gray-200">กลุ่ม/ฝ่าย</th>
               {/* <th className="py-3 px-4 border-b border-gray-200">under_department1</th> 
                     <th className="py-3 px-4 border-b border-gray-200">under_department2</th>  */}
-              {!['approver', 'approver2'].includes(currentUserStatus) && (
+              {!['approver', 'approver2', 'checker'].includes(currentUserStatus) && (
                 <th className="py-3 px-4 border-b border-gray-200">สถานะ</th>
               )}
               {currentUserStatus === 'superadmin' && (
@@ -365,7 +365,7 @@ export default function UsersPage() {
                 <td className="border px-4 py-2 text-center">
                   {user.group_name} {user.under_department1}
                 </td>
-                {!['approver', 'approver2'].includes(currentUserStatus) && (
+                {!['approver', 'approver2', 'checker'].includes(currentUserStatus) && (
                   <td className="border px-4 py-2 text-center">{user.status}</td>
                 )}
 
@@ -375,7 +375,7 @@ export default function UsersPage() {
                     {user.status === 'superadmin' ? (
                       <span className="text-gray-400 italic">Restricted</span>
                     ) : (
-                      ['user', 'approver', 'approver2', 'admin', 'superadmin'].map((status) => (
+                      ['user', 'approver', 'approver2', 'checker', 'admin', 'superadmin'].map((status) => (
                         <button
                           key={status}
                           onClick={() => updateStatus(user.id, status)}

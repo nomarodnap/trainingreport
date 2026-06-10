@@ -577,7 +577,7 @@ function DirectReport() {
               {/* approver ในโหมดผู้ดูแล */}
 
 
-              {(status === 'approver' || status === 'approver2') && !isUserMode && (
+              {(['approver', 'approver2', 'checker'].includes(status)) && !isUserMode && (
                 <>
                   <button
                     onClick={() => window.location.href = '/dashboard'}

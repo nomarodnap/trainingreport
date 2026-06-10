@@ -117,7 +117,7 @@ useEffect(() => {
         return;
     }
 
-    if (storedStatus === 'approver') {
+    if (['approver', 'checker'].includes(storedStatus)) {
         if (checkerDetails.department !== userDetails.department) {
             console.log('Approver ไม่ใช่หน่วยงานเดียวกัน, redirecting to index page');
             router.push('/');
@@ -992,7 +992,7 @@ const totalPages = Math.ceil(filteredReports.length / rowsPerPage);
 				<th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่ส่ง</th>
 				<th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่แก้ไขล่าสุด</th> 
 				<th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ผู้ที่แก้ไขล่าสุด</th> 
-								        {storedStatus === 'approver' && <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ตรวจสอบ</th>}
+								        {['approver', 'checker'].includes(storedStatus) && <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ตรวจสอบ</th>}
 
         {(storedStatus === 'adminx' || storedStatus === 'superadminx')&& (<th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ดำเนินการ</th>)}
             </tr>
@@ -1020,7 +1020,7 @@ const totalPages = Math.ceil(filteredReports.length / rowsPerPage);
             <td className="border px-4 py-2 text-center">{formatDateBuddhist(report.submitTime)}</td>
             <td className="border px-4 py-2 text-center">  {report.editTime ? formatDateBuddhist(report.editTime) : "N/A"}</td>
 			<td className="border px-4 py-2 text-center">  {report.whoEdit ? report.whoEdit : "N/A"}</td>
-			{storedStatus === 'approver' && <td className="border px-4 py-2 text-center">
+			{['approver', 'checker'].includes(storedStatus) && <td className="border px-4 py-2 text-center">
   {report.checked?.includes("รอ") ? (
     <span className="font-bold text-red-600">รอตรวจสอบ</span>
   ) : report.checked?.includes("แล้ว") ? (

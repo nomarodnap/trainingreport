@@ -1,4 +1,4 @@
-﻿import { jsPDF } from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import mysql from "mysql2/promise";
 import QRCode from 'qrcode';
@@ -17,21 +17,21 @@ const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUsAAAFLCAYAAA
 
 export default async function handler(req, res) {
   const { id } = req.query;
-  
+
 
 
 
   // สร้างการเชื่อมต่อฐานข้อมูล
   const db = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
 
-  waitForConnections: true,
-  connectionLimit: 10, // กำหนดจำนวนการเชื่อมต่อพร้อมกัน
-  queueLimit: 0 // จำกัดจำนวนคำขอในคิว
-});
+    waitForConnections: true,
+    connectionLimit: 10, // กำหนดจำนวนการเชื่อมต่อพร้อมกัน
+    queueLimit: 0 // จำกัดจำนวนคำขอในคิว
+  });
   try {
     // ดึงข้อมูลจากฐานข้อมูล
     const [rows] = await db.execute(
@@ -64,237 +64,250 @@ export default async function handler(req, res) {
     if (rows.length === 0) {
       return res.status(404).json({ error: "Data not found" });
     }
-	
-	const formatDate = (date) => {
-  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-  const thaiDate = new Intl.DateTimeFormat('th-TH', options).format(new Date(date));
-  return thaiDate.replace('วัน', '') // เพิ่มช่องว่างหลังคำว่า "วัน" 
-                 .replace('อาทิตย์', 'วันอาทิตย์') // แก้ไขชื่อวันในภาษาไทยที่แสดงไม่ครบถ้วน
-                 .replace('จันทร์', 'วันจันทร์')
-                 .replace('อังคาร', 'วันอังคาร')
-                 .replace('พุธ', 'วันพุธ')
-                 .replace('พฤหัสบดี', 'วันพฤหัสบดี')
-                 .replace('ศุกร์', 'วันศุกร์')
-                 .replace('เสาร์', 'วันเสาร์');
-};
+
+    const formatDate = (date) => {
+      const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      const thaiDate = new Intl.DateTimeFormat('th-TH', options).format(new Date(date));
+      return thaiDate.replace('วัน', '') // เพิ่มช่องว่างหลังคำว่า "วัน" 
+        .replace('อาทิตย์', 'วันอาทิตย์') // แก้ไขชื่อวันในภาษาไทยที่แสดงไม่ครบถ้วน
+        .replace('จันทร์', 'วันจันทร์')
+        .replace('อังคาร', 'วันอังคาร')
+        .replace('พุธ', 'วันพุธ')
+        .replace('พฤหัสบดี', 'วันพฤหัสบดี')
+        .replace('ศุกร์', 'วันศุกร์')
+        .replace('เสาร์', 'วันเสาร์');
+    };
 
 
     const data = rows[0];
 
     // สร้าง PDF
-	
-const qrCodeBase64 = await QRCode.toDataURL(`http://trainingreport.fisheries.go.th/api/pdf/${data.id}`, {
-  margin: 1,
-  width: 100,
-});
 
-
-
-const doc = new jsPDF();
-
-// เพิ่มฟอนต์ภาษาไทย
-doc.addFileToVFS("THSarabun.ttf", thSarabunFontBase64);
-doc.addFileToVFS("THSarabunBold.ttf", thSarabunBoldFontBase64);
-
-doc.addFont("THSarabun.ttf", "THSarabun", "normal");
-doc.addFont("THSarabunBold.ttf", "THSarabunBold", "normal");
-doc.setFont("THSarabunBold");
-
-let y = 15;
-const lineSpacing = 7;        // 🔽 ลดจาก 10 เหลือ 7
-const sectionSpacing = 10;     // 🔽 ใช้สำหรับเว้นหัวข้อใหญ่
-const textFontSize = 12;      // 🔽 ลดขนาดตัวอักษรจาก 14 → 12
-const headingFontSize = 14;   // 🔽 หัวข้อย่อยลดจาก 16 → 14
-const titleFontSize = 16;     // 🔽 หัวเรื่องบนสุดลดจาก 18 → 16
-
-// 📌 ใส่โลโก้ที่มุมบนซ้าย
-doc.addImage(qrCodeBase64, 'PNG', 170, 7, 30, 30);
-const logoSize = 10;
-const logoX = 170 + (30 - logoSize) / 2; // 40
-const logoY = 7 + (30 - logoSize) / 2; // 20
-doc.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
-
-const now = new Date();
-const thaiMonths = [
-  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-];
-const thaiDateStr = `วันที่ ${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
-
-const marginTop = 10;
-const marginBottom = 10;
-const pageHeight = 297; // A4 in mm
-
-// เพิ่มการเช็คว่ากำลังจะเกินหน้า A4 หรือไม่
-function checkPageSpace(addHeight) {
-  if (y + addHeight > pageHeight - marginBottom) {
-    doc.addPage();
-    y = marginTop;
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-// หัวเรื่อง
-doc.setFontSize(titleFontSize);
-doc.text("แบบรายงานผลการเข้ารับฝึกอบรมเชิงปฏิบัติการ", 105, y, { align: "center" });
-y += lineSpacing;
-doc.text("หลักสูตรต่างๆ ที่จัดโดยหน่วยงานภายนอก", 105, y, { align: "center" });
-y += lineSpacing;
-doc.setFont("THSarabun");
-
-
-
-doc.text(`(รายงานผลฯ รหัส: ${data.formCode})`, 105, y, { align: "center" });
-y += 10;
-
-
-// 🔽 เปลี่ยน font และ spacing ชุดข้อมูล
-doc.setFontSize(headingFontSize);
-doc.text("ข้อมูลผู้ใช้งาน", 105, y, { align: "center" });
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(textFontSize);
-doc.text(`เลขบัตรประชาชน: ${data.username}`, 20, y);
-doc.text(`ชื่อ-สกุล: ${data.title}${data.first_name} ${data.last_name}`, 110, y);
-y += lineSpacing;
-
-doc.text(`ตำแหน่ง/ระดับ: ${data.position}${data.level ?? ""}`, 20, y);
-doc.text(`ประเภท: ${data.type}`, 110, y);
-y += lineSpacing;
-
-doc.text(`สังกัด/กอง: ${data.department}`, 20, y);
-doc.text(`กลุ่ม/ฝ่าย: ${data.group_name}`, 110, y);
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(headingFontSize);
-doc.text("ข้อมูลการฝึกอบรม", 105, y, { align: "center" });
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(textFontSize);
-doc.text(`ชื่อหลักสูตร: ${data.courseName}`, 20, y);
-y += lineSpacing;
-doc.text(`วิธีการอบรม: ${data.trainingMethod || "N/A"}`, 20, y);
-doc.text(`สถานที่อบรม: ${data.hybridLocation || "N/A"}`, 55, y);
-y += lineSpacing;
-doc.text(`วันที่เริ่มอบรม: ${formatDate(data.startDate)}`, 20, y);
-doc.text(`วันที่สิ้นสุดอบรม: ${formatDate(data.endDate)}`, 75, y);
-doc.text(`ระยะเวลารวม: ${data.period}`, 135, y);
-y += lineSpacing;
-doc.text(`หน่วยงานจัดอบรม: ${data.trainingOrg || "N/A"}`, 20, y);
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(headingFontSize);
-doc.text("ข้อมูลค่าใช้จ่าย", 105, y, { align: "center" });
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(textFontSize);
-doc.text(`ค่าลงทะเบียน: ${data.regFeeAmount || "N/A"} บาท`, 20, y);
-doc.text(`ค่าที่พัก: ${data.accommodationFeeAmount || "N/A"} บาท`, 110, y);
-y += lineSpacing;
-doc.text(`ค่ายานพาหนะ: ${data.transportationFeeAmount || "N/A"} บาท`, 20, y);
-doc.text(`ค่าเบี้ยเลี้ยง: ${data.allowanceFeeAmount || "N/A"} บาท`, 110, y);
-y += lineSpacing;
-doc.text(`ค่าใช้จ่ายรวม: ${data.totalCost || "N/A"} บาท`, 110, y);
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(headingFontSize);
-doc.text("ข้อมูลการเบิกจ่ายงบประมาณ", 105, y, { align: "center" });
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(textFontSize);
-doc.text(`งบประมาณภายใน: ${data.internalBudget || "N/A"} บาท`, 20, y);
-doc.text(`งบประมาณภายนอก: ${data.externalBudget || "N/A"} บาท`, 110, y);
-y += lineSpacing;
-doc.text(`แผนงาน/โครงการ: ${data.planBudget || "N/A"}`, 20, y);
-checkPageSpace(lineSpacing); y += lineSpacing;
-doc.text(`หน่วยงานภายนอกที่ให้งบ: ${data.externalAgency || "N/A"}`, 20, y);
-checkPageSpace(lineSpacing); y += 10;
-
-doc.setFontSize(headingFontSize);
-doc.text("การนำความรู้หลังจากที่ได้เข้ารับการฝึกอบรมไปใช้ประโยชน์", 105, y, { align: "center" });
-checkPageSpace(lineSpacing); y += lineSpacing;
-
-doc.setFontSize(textFontSize);
-
-// ตาราง: ลด rowHeight
-let rowHeight = 8; // 🔽 ลดจาก 10
-const colWidths = [90, 26.5, 26.5, 26.5];
-const headers = ["ประเภทการนำความรู้", "มาก", "ปานกลาง", "น้อย"];
-let currentX = 20;
-
-// วาดหัวตาราง
-headers.forEach((header, i) => {
-  const colWidth = colWidths[i];
-  const xCenter = currentX + colWidth / 2;
-  const textWidth = doc.getTextWidth(header);
-  const xText = xCenter - textWidth / 2;
-
-  doc.rect(currentX, y, colWidth, rowHeight);
-  doc.text(header, xText, y + 6); // ปรับ y ให้อยู่กลาง rowHeight = 8
-  currentX += colWidth;
-});
-y += rowHeight;
-
-const knowledgeRows = [
-  { label: "พัฒนาตนเอง/นำมาเป็นแนวทางในการปฏิบัติงาน", value: data.knowledgeSelfDevelop },
-  { label: "พัฒนา/แก้ไขปัญหา/ปรับปรุง/เปลี่ยนแปลงงานที่ปฏิบัติให้ดียิ่งขึ้น", value: data.knowledgeWorkImprove },
-  { label: "แลกเปลี่ยนมุมมองระหว่างทีมงาน/ถ่ายทอดความรู้", value: data.knowledgeTeamwork },
-  { label: "เกิดการเปลี่ยนแปลงในด้านประสิทธิภาพและประสิทธิผลของงาน", value: data.knowledgeEfficiency },
-  { label: "สร้างเครือข่ายและบูรณาการทำงานร่วมกันภายในองค์กร", value: data.knowledgeNetworking },
-];
-
-// วาดแถวข้อมูล
-knowledgeRows.forEach((row, index) => {
-  currentX = 20;
-
-  doc.rect(currentX, y, colWidths[0], rowHeight);
-  doc.text(`${index + 1}. ${row.label}`, currentX + 2, y + 6);
-  currentX += colWidths[0];
-
-  ["มาก", "ปานกลาง", "น้อย"].forEach(level => {
-    doc.rect(currentX, y, colWidths[1], rowHeight);
-    if (row.value === level) {
-      doc.text("  √", currentX + 10, y + 6);
+    let qrCodeBase64 = null;
+    if (data.certificate_url) {
+      qrCodeBase64 = await QRCode.toDataURL(`https://trainingreport.fisheries.go.th/${data.certificate_url}`, {
+        margin: 1,
+        width: 100,
+      });
     }
-    currentX += colWidths[1];
-  });
 
-  y += rowHeight;
-});
 
-// พื้นที่ยืนยันข้อมูลด้านล่างซ้าย
-y += 15; // เว้นระยะจากตารางก่อนหน้า
-doc.setFont("THSarabunBold");
-doc.setFontSize(headingFontSize);
 
-doc.text(
-  "ข้าพเจ้ารับรองว่าข้อมูลและเอกสารหลักฐานนี้ มีความถูกต้องสมบูรณ์และครบถ้วนทุกประการ",
-  105,
-  y,
-  { align: "center" }
-);
-doc.setFont("THSarabun");
+    const doc = new jsPDF();
 
-y += 20; // เว้นบรรทัดสำหรับลายเซ็น
-doc.text("......................................................", 160, y, { align: "center" });
+    // เพิ่มฟอนต์ภาษาไทย
+    doc.addFileToVFS("THSarabun.ttf", thSarabunFontBase64);
+    doc.addFileToVFS("THSarabunBold.ttf", thSarabunBoldFontBase64);
 
-y += 10;
-doc.text(`(${data.title}${data.first_name} ${data.last_name})`, 160, y, { align: "center" });
+    doc.addFont("THSarabun.ttf", "THSarabun", "normal");
+    doc.addFont("THSarabunBold.ttf", "THSarabunBold", "normal");
+    doc.setFont("THSarabunBold");
 
-y += 10;
-doc.text(`${data.position}${data.level ?? ""}`, 160, y, { align: "center" });
+    let y = 15;
+    const lineSpacing = 7;        // 🔽 ลดจาก 10 เหลือ 7
+    const sectionSpacing = 10;     // 🔽 ใช้สำหรับเว้นหัวข้อใหญ่
+    const textFontSize = 12;      // 🔽 ลดขนาดตัวอักษรจาก 14 → 12
+    const headingFontSize = 14;   // 🔽 หัวข้อย่อยลดจาก 16 → 14
+    const titleFontSize = 16;     // 🔽 หัวเรื่องบนสุดลดจาก 18 → 16
 
-y += 10;
-doc.text(thaiDateStr, 160, y, { align: "center" });
+    // 📌 ใส่โลโก้ที่มุมบนขวา
+    if (qrCodeBase64) {
+      doc.addImage(qrCodeBase64, 'PNG', 170, 7, 30, 30);
+      const logoSize = 10;
+      const logoX = 170 + (30 - logoSize) / 2; // 40
+      const logoY = 7 + (30 - logoSize) / 2; // 20
+      doc.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
+
+      doc.setFont("THSarabun");
+      doc.setFontSize(10);
+      doc.text("แสกนเพื่อดูประกาศนียบัตร", 185, 40, { align: "center" });
+      doc.setFont("THSarabunBold");
+    } else {
+      // ขยายโลโก้ให้มีขนาดเท่ากับหรือใหญ่กว่า QR Code
+      doc.addImage(logoBase64, 'PNG', 169, 6, 32, 32);
+    }
+
+    const now = new Date();
+    const thaiMonths = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+    const thaiDateStr = `วันที่ ${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+    const marginTop = 10;
+    const marginBottom = 10;
+    const pageHeight = 297; // A4 in mm
+
+    // เพิ่มการเช็คว่ากำลังจะเกินหน้า A4 หรือไม่
+    function checkPageSpace(addHeight) {
+      if (y + addHeight > pageHeight - marginBottom) {
+        doc.addPage();
+        y = marginTop;
+      }
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // หัวเรื่อง
+    doc.setFontSize(titleFontSize);
+    doc.text("แบบรายงานผลการเข้ารับฝึกอบรมเชิงปฏิบัติการ", 105, y, { align: "center" });
+    y += lineSpacing;
+    doc.text("หลักสูตรต่างๆ ที่จัดโดยหน่วยงานภายนอก", 105, y, { align: "center" });
+    y += lineSpacing;
+    doc.setFont("THSarabun");
+
+
+
+    doc.text(`(รายงานผลฯ รหัส: ${data.formCode})`, 105, y, { align: "center" });
+    y += 10;
+
+
+    // 🔽 เปลี่ยน font และ spacing ชุดข้อมูล
+    doc.setFontSize(headingFontSize);
+    doc.text("ข้อมูลผู้ใช้งาน", 105, y, { align: "center" });
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(textFontSize);
+    doc.text(`เลขบัตรประชาชน: ${data.username}`, 20, y);
+    doc.text(`ชื่อ-สกุล: ${data.title}${data.first_name} ${data.last_name}`, 110, y);
+    y += lineSpacing;
+
+    doc.text(`ตำแหน่ง/ระดับ: ${data.position}${data.level ?? ""}`, 20, y);
+    doc.text(`ประเภท: ${data.type}`, 110, y);
+    y += lineSpacing;
+
+    doc.text(`สังกัด/กอง: ${data.department}`, 20, y);
+    doc.text(`กลุ่ม/ฝ่าย: ${data.group_name}`, 110, y);
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(headingFontSize);
+    doc.text("ข้อมูลการฝึกอบรม", 105, y, { align: "center" });
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(textFontSize);
+    doc.text(`ชื่อหลักสูตร: ${data.courseName}`, 20, y);
+    y += lineSpacing;
+    doc.text(`วิธีการอบรม: ${data.trainingMethod || "N/A"}`, 20, y);
+    doc.text(`สถานที่อบรม: ${data.hybridLocation || "N/A"}`, 55, y);
+    y += lineSpacing;
+    doc.text(`วันที่เริ่มอบรม: ${formatDate(data.startDate)}`, 20, y);
+    doc.text(`วันที่สิ้นสุดอบรม: ${formatDate(data.endDate)}`, 75, y);
+    doc.text(`ระยะเวลารวม: ${data.period}`, 135, y);
+    y += lineSpacing;
+    doc.text(`หน่วยงานจัดอบรม: ${data.trainingOrg || "N/A"}`, 20, y);
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(headingFontSize);
+    doc.text("ข้อมูลค่าใช้จ่าย", 105, y, { align: "center" });
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(textFontSize);
+    doc.text(`ค่าลงทะเบียน: ${data.regFeeAmount || "N/A"} บาท`, 20, y);
+    doc.text(`ค่าที่พัก: ${data.accommodationFeeAmount || "N/A"} บาท`, 110, y);
+    y += lineSpacing;
+    doc.text(`ค่ายานพาหนะ: ${data.transportationFeeAmount || "N/A"} บาท`, 20, y);
+    doc.text(`ค่าเบี้ยเลี้ยง: ${data.allowanceFeeAmount || "N/A"} บาท`, 110, y);
+    y += lineSpacing;
+    doc.text(`ค่าใช้จ่ายรวม: ${data.totalCost || "N/A"} บาท`, 110, y);
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(headingFontSize);
+    doc.text("ข้อมูลการเบิกจ่ายงบประมาณ", 105, y, { align: "center" });
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(textFontSize);
+    doc.text(`งบประมาณภายใน: ${data.internalBudget || "N/A"} บาท`, 20, y);
+    doc.text(`งบประมาณภายนอก: ${data.externalBudget || "N/A"} บาท`, 110, y);
+    y += lineSpacing;
+    doc.text(`แผนงาน/โครงการ: ${data.planBudget || "N/A"}`, 20, y);
+    checkPageSpace(lineSpacing); y += lineSpacing;
+    doc.text(`หน่วยงานภายนอกที่ให้งบ: ${data.externalAgency || "N/A"}`, 20, y);
+    checkPageSpace(lineSpacing); y += 10;
+
+    doc.setFontSize(headingFontSize);
+    doc.text("การนำความรู้หลังจากที่ได้เข้ารับการฝึกอบรมไปใช้ประโยชน์", 105, y, { align: "center" });
+    checkPageSpace(lineSpacing); y += lineSpacing;
+
+    doc.setFontSize(textFontSize);
+
+    // ตาราง: ลด rowHeight
+    let rowHeight = 8; // 🔽 ลดจาก 10
+    const colWidths = [90, 26.5, 26.5, 26.5];
+    const headers = ["ประเภทการนำความรู้", "มาก", "ปานกลาง", "น้อย"];
+    let currentX = 20;
+
+    // วาดหัวตาราง
+    headers.forEach((header, i) => {
+      const colWidth = colWidths[i];
+      const xCenter = currentX + colWidth / 2;
+      const textWidth = doc.getTextWidth(header);
+      const xText = xCenter - textWidth / 2;
+
+      doc.rect(currentX, y, colWidth, rowHeight);
+      doc.text(header, xText, y + 6); // ปรับ y ให้อยู่กลาง rowHeight = 8
+      currentX += colWidth;
+    });
+    y += rowHeight;
+
+    const knowledgeRows = [
+      { label: "พัฒนาตนเอง/นำมาเป็นแนวทางในการปฏิบัติงาน", value: data.knowledgeSelfDevelop },
+      { label: "พัฒนา/แก้ไขปัญหา/ปรับปรุง/เปลี่ยนแปลงงานที่ปฏิบัติให้ดียิ่งขึ้น", value: data.knowledgeWorkImprove },
+      { label: "แลกเปลี่ยนมุมมองระหว่างทีมงาน/ถ่ายทอดความรู้", value: data.knowledgeTeamwork },
+      { label: "เกิดการเปลี่ยนแปลงในด้านประสิทธิภาพและประสิทธิผลของงาน", value: data.knowledgeEfficiency },
+      { label: "สร้างเครือข่ายและบูรณาการทำงานร่วมกันภายในองค์กร", value: data.knowledgeNetworking },
+    ];
+
+    // วาดแถวข้อมูล
+    knowledgeRows.forEach((row, index) => {
+      currentX = 20;
+
+      doc.rect(currentX, y, colWidths[0], rowHeight);
+      doc.text(`${index + 1}. ${row.label}`, currentX + 2, y + 6);
+      currentX += colWidths[0];
+
+      ["มาก", "ปานกลาง", "น้อย"].forEach(level => {
+        doc.rect(currentX, y, colWidths[1], rowHeight);
+        if (row.value === level) {
+          doc.text("  √", currentX + 10, y + 6);
+        }
+        currentX += colWidths[1];
+      });
+
+      y += rowHeight;
+    });
+
+    // พื้นที่ยืนยันข้อมูลด้านล่างซ้าย
+    y += 15; // เว้นระยะจากตารางก่อนหน้า
+    doc.setFont("THSarabunBold");
+    doc.setFontSize(headingFontSize);
+
+    doc.text(
+      "ข้าพเจ้ารับรองว่าข้อมูลและเอกสารหลักฐานนี้ มีความถูกต้องสมบูรณ์และครบถ้วนทุกประการ",
+      105,
+      y,
+      { align: "center" }
+    );
+    doc.setFont("THSarabun");
+
+    y += 20; // เว้นบรรทัดสำหรับลายเซ็น
+    doc.text("......................................................", 160, y, { align: "center" });
+
+    y += 10;
+    doc.text(`(${data.title}${data.first_name} ${data.last_name})`, 160, y, { align: "center" });
+
+    y += 10;
+    doc.text(`${data.position}${data.level ?? ""}`, 160, y, { align: "center" });
+
+    y += 10;
+    doc.text(thaiDateStr, 160, y, { align: "center" });
 
 
 

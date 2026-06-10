@@ -290,11 +290,11 @@ export default function Header() {
                   <div className="px-4 py-2">
                     <h6 className="font-semibold">{user.username}</h6>
                     <p className="text-sm text-gray-500">
-                      สถานะ: {user.status === 'superadmin' ? 'ผู้ดูแลสูงสุด' : user.status === 'admin' ? 'ผู้ดูแลระบบ' : user.status === 'approver' ? 'ผู้ตรวจสอบ' : user.status === 'approver2' ? 'ผู้ตรวจสอบ' : 'ผู้ใช้งาน'}
+                      สถานะ: {user.status === 'superadmin' ? 'ผู้ดูแลสูงสุด' : user.status === 'admin' ? 'ผู้ดูแลระบบ' : user.status === 'checker' ? 'ผู้ตรวจสอบ' : user.status === 'approver' ? 'ผู้ตรวจสอบ' : user.status === 'approver2' ? 'ผู้ตรวจสอบ' : 'ผู้ใช้งาน'}
                     </p>
                   </div>
 
-                  {['admin', 'approver', 'superadmin', 'approver2'].includes(user?.status) && (
+                  {['admin', 'approver', 'superadmin', 'approver2', 'checker'].includes(user?.status) && (
                     <button
                       onClick={async () => {
                         try {

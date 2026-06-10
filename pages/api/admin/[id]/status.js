@@ -1,11 +1,11 @@
-﻿export default async function handler(req, res) {
+export default async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === 'PUT') {
     const { status } = req.body;
 
     // ตรวจสอบว่าสถานะที่ส่งมาเป็นค่าที่ถูกต้องหรือไม่
-    if (!['admin', 'user', 'approver'].includes(status)) {
+    if (!['admin', 'user', 'approver', 'approver2', 'checker', 'superadmin'].includes(status)) {
       return res.status(400).json({ message: 'สถานะไม่ถูกต้อง' });
     }
 

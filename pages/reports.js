@@ -156,7 +156,7 @@ export default function ReportsPage() {
 
         const user = await res.json();
 
-        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2') {
+        if (user.status !== 'admin' && user.status !== 'superadmin' && user.status !== 'approver' && user.status !== 'approver2' && user.status !== 'checker') {
           alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
           router.push('/');
         }
