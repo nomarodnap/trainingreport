@@ -1174,7 +1174,7 @@ export default function ReportsPage() {
                       href={`/user-details/${report.user_id}`}
                       className="text-blue-600 underline flex items-center justify-center gap-2"
                     >
-                      {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                      {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                       <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                     </a>
                   ) : (
@@ -1223,7 +1223,7 @@ export default function ReportsPage() {
 
 
                 <td className="border px-4 py-2 text-center">
-                  {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                  {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                     report.checked?.includes("รอ") ? (
                       <span className="font-bold text-red-600">รอตรวจสอบ</span>
                     ) : report.checked?.includes("แล้ว") ? (
@@ -1293,7 +1293,7 @@ export default function ReportsPage() {
                         href={`/user-details/${report.user_id}`}
                         className="text-blue-600 underline flex items-center justify-center gap-2"
                       >
-                        {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                        {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                       </a>
                     ) : (
@@ -1336,7 +1336,7 @@ export default function ReportsPage() {
                     </td>
                   )}
                   <td className="border px-4 py-2 text-center">
-                    {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                    {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                       report.checked?.includes("รอ") ? (
                         <span className="font-bold text-red-600">รอตรวจสอบ</span>
                       ) : report.checked?.includes("แล้ว") ? (
@@ -1416,7 +1416,7 @@ export default function ReportsPage() {
                         href={`/user-details/${report.user_id}`}
                         className="text-blue-600 underline flex items-center justify-center gap-2"
                       >
-                        {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                        {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                       </a>
                     ) : (
@@ -1457,7 +1457,7 @@ export default function ReportsPage() {
                     </td>
                   )}
                   <td className="border px-4 py-2 text-center">
-                    {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                    {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                       report.checked?.includes("รอ") ? (
                         <span className="font-bold text-red-600">รอตรวจสอบ</span>
                       ) : report.checked?.includes("แล้ว") ? (
@@ -1533,7 +1533,7 @@ export default function ReportsPage() {
                         href={`/user-details/${report.user_id}`}
                         className="text-blue-600 underline flex items-center justify-center gap-2"
                       >
-                        {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                        {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                       </a>
                     ) : (
@@ -1623,7 +1623,7 @@ export default function ReportsPage() {
                     </td>
                   )}
                   <td className="border px-4 py-2 text-center">
-                    {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                    {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                       report.checked?.includes("รอ") ? (
                         <span className="font-bold text-red-600">รอตรวจสอบ</span>
                       ) : report.checked?.includes("แล้ว") ? (
@@ -1697,7 +1697,7 @@ export default function ReportsPage() {
                         href={`/user-details/${report.user_id}`}
                         className="text-blue-600 underline flex items-center justify-center gap-2"
                       >
-                        {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                        {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                       </a>
                     ) : (
@@ -1747,7 +1747,7 @@ export default function ReportsPage() {
                     </td>
                   )}
                   <td className="border px-4 py-2 text-center">
-                    {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                    {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                       report.checked?.includes("รอ") ? (
                         <span className="font-bold text-red-600">รอตรวจสอบ</span>
                       ) : report.checked?.includes("แล้ว") ? (
@@ -1875,7 +1875,7 @@ export default function ReportsPage() {
                     </td>
                   )}
                   <td className="border px-4 py-2 text-center">
-                    {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                    {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                       report.checked?.includes("รอ") ? (
                         <span className="font-bold text-red-600">รอตรวจสอบ</span>
                       ) : report.checked?.includes("แล้ว") ? (
@@ -1943,7 +1943,7 @@ export default function ReportsPage() {
                       href={`/user-details/${report.user_id}`}
                       className="text-blue-600 underline flex items-center justify-center gap-2"
                     >
-                      {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? report.username : (report.nickname ?? report.username)}
+                      {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? report.username : (report.nickname ?? report.username)}
                       <FontAwesomeIcon icon={faEye} className="text-blue-600 hover:text-blue" />
                     </a>
                   ) : (
@@ -2032,7 +2032,7 @@ export default function ReportsPage() {
 
 
                 <td className="border px-4 py-2 text-center">
-                  {userDetails?.status === 'approver' || userDetails?.status === 'approver2' ? (
+                  {['approver', 'approver2', 'checker'].includes(userDetails?.status) ? (
                     report.checked?.includes("รอ") ? (
                       <span className="font-bold text-red-600">รอตรวจสอบ</span>
                     ) : report.checked?.includes("แล้ว") ? (
@@ -2260,7 +2260,7 @@ export default function ReportsPage() {
             </button>
           )}
 
-          {(userDetails?.status === 'approver' || userDetails?.status === 'approver2') && (
+          {(['approver', 'approver2', 'checker'].includes(userDetails?.status)) && (
             <button
               onClick={exportToExcelForApprover}
               className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
