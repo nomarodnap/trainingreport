@@ -177,7 +177,7 @@ export default async function handler(req, res) {
 
     doc.setFontSize(textFontSize);
     doc.text(`เลขบัตรประชาชน: ${data.username}`, 20, y);
-    doc.text(`ชื่อ-สกุล: ${data.title}${data.first_name} ${data.last_name}`, 110, y);
+    doc.text(`ชื่อ-สกุล: ${data.title} ${data.first_name} ${data.last_name}`, 110, y);
     y += lineSpacing;
 
     doc.text(`ตำแหน่ง/ระดับ: ${data.position}${data.level ?? ""}`, 20, y);

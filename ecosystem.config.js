@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'training-report',
       script: 'server.js',
-      instances: 4,
+      instances: 'max',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
