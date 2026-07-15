@@ -1,4 +1,4 @@
-﻿// pages/reports.js
+// pages/reports.js
 import './styles.css';
 import { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
@@ -830,7 +830,7 @@ export default function ReportsPage() {
                               )}
                               <option value="group_name">กลุ่ม/ฝ่าย</option>
                             </optgroup>
-                            {(userDetails?.status === 'superadmin' || userDetails?.status === 'admin') && (
+                            {(userDetails?.status === 'superadmin' || userDetails?.status === 'admin' || userDetails?.status === 'checker') && (
                               <optgroup label="เพิ่มโน๊ต">
                                 <option value="note">โน๊ต</option>
                               </optgroup>

@@ -158,7 +158,19 @@ export default function Dashboard() {
               <h1 className="text-4xl lg:text-5xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                 📊 Training Dashboard
               </h1>
-              <p className="text-slate-600 text-lg">ระบบติดตามและวิเคราะห์รายงานการฝึกอบรม</p>
+              <p className="text-slate-600 text-lg">
+                ระบบติดตามและวิเคราะห์รายงานการฝึกอบรม
+              </p>
+              {userDetails?.status === 'approver' && userDetails?.department && (
+                <div className="mt-3 inline-block px-5 py-2 bg-blue-100 border border-blue-300 text-blue-800 rounded-xl font-bold text-xl shadow-sm">
+                  🏢 {userDetails.department}
+                </div>
+              )}
+              {userDetails?.status === 'approver2' && userDetails?.group_name && (
+                <div className="mt-3 inline-block px-5 py-2 bg-purple-100 border border-purple-300 text-purple-800 rounded-xl font-bold text-xl shadow-sm">
+                  🏢 {userDetails.group_name}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-4">

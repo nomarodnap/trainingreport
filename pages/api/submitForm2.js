@@ -1,5 +1,6 @@
 // pages/api/submitForm2.js
 import TrainingReport from '../../models/TrainingReport';
+import pool from '../../lib/db';
 
 export default async (req, res) => {
   if (req.method === 'POST') {
@@ -30,6 +31,14 @@ export default async (req, res) => {
           reportData.submitTime = new Date();
 
           const result = await TrainingReport.addReport(reportData);
+
+          if (reportData.note && reportData.note.trim() !== "") {
+            await pool.query(
+              "INSERT INTO note_notifications (reportId, formCode, note) VALUES (?, ?, ?)",
+              [result.id, result.formCode, reportData.note]
+            );
+          }
+
           results.push({
             username,
             success: true,

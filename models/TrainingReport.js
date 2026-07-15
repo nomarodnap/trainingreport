@@ -196,6 +196,7 @@ export default class TrainingReport {
       return {
         message: 'Data saved successfully',
         formCode,
+        id,
       };
 
     } catch (error) {

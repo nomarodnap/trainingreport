@@ -291,8 +291,16 @@ function DirectReport() {
     return year;
   };
 
-  const { reportId } = router.query;
+  const { reportId, tab, searchFormCode } = router.query;
 
+  useEffect(() => {
+    if (tab) {
+      setShowTable(Number(tab));
+    }
+    if (searchFormCode) {
+      setFilters([{ field: "formCode", value: searchFormCode }]);
+    }
+  }, [tab, searchFormCode]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -1008,7 +1016,7 @@ function DirectReport() {
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ปีงบประมาณ</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่ส่ง</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">วันที่แก้ไขล่าสุด</th>
-                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">รายการที่ต้องแก้ไข</th>
+                <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ข้อความจาก กบค.</th>
                 <th className="py-3 px-4 border-b border-gray-200 hidden md:table-cell">ดำเนินการ</th>
               </tr>
             </thead>

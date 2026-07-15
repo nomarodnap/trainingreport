@@ -1,4 +1,4 @@
-﻿// Header.js
+// Header.js
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
@@ -74,24 +74,34 @@ export default function Header() {
 
   const fetchNotifications = async () => {
     try {
-      // ดึง notification เดิม
-      const res1 = await axios.get('/api/notifications');
-      // ดึง notification support-list
-      const res2 = await axios.get('/api/support-notifications');
-      // ใส่ type ให้แต่ละอัน
-      const noti1 = (res1.data || []).map(n => ({ ...n, _type: 'report' }));
-      const noti2 = (res2.data || []).map(n => ({ ...n, _type: 'support' }));
+      let all = [];
+      if (user && (user.status === 'admin' || user.status === 'superadmin')) {
+        // ดึง notification เดิม
+        const res1 = await axios.get('/api/notifications');
+        // ดึง notification support-list
+        const res2 = await axios.get('/api/support-notifications');
+        
+        const noti1 = (res1.data || []).map(n => ({ ...n, _type: 'report' }));
+        const noti2 = (res2.data || []).map(n => ({ ...n, _type: 'support' }));
+        all = [...all, ...noti1, ...noti2];
+      }
+      
+      // ดึง notification โน๊ตใหม่ (Everyone can fetch their own note notifications)
+      const res3 = await axios.get('/api/note-notifications');
+      const noti3 = (res3.data || []).map(n => ({ ...n, _type: 'note' }));
+      
       // รวมและเรียงตามเวลาใหม่สุด
-      const all = [...noti1, ...noti2].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      all = [...all, ...noti3].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setNotifications(all);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      alert('Error fetching notifications: ' + (error.response?.data?.message || error.message));
     }
   };
 
   useEffect(() => {
-    if (user && (user.status === 'admin' || user.status === 'superadmin')) {
-      fetchNotifications(); // <<< ต้องมีอันนี้
+    if (user) {
+      fetchNotifications();
     }
   }, [user]);
 
@@ -132,6 +142,8 @@ export default function Header() {
     try {
       if (type === 'support') {
         await axios.post('/api/support-notifications', { id });
+      } else if (type === 'note') {
+        await axios.post('/api/note-notifications', { id });
       } else {
         await axios.post(`/api/notifications/${id}/mark-as-read`);
       }
@@ -152,10 +164,11 @@ export default function Header() {
 
       if (!window.confirm("คุณต้องการทำเครื่องหมายว่าอ่านแล้วทั้งหมดหรือไม่?")) return;
 
-      // Call both APIs concurrently
+      // Call all APIs concurrently
       await Promise.all([
         axios.patch('/api/notifications'),        // reports
-        axios.patch('/api/support-notifications') // support
+        axios.patch('/api/support-notifications'), // support
+        axios.patch('/api/note-notifications')     // notes
       ]);
 
       // Update local state
@@ -166,11 +179,13 @@ export default function Header() {
     }
   };
 
-  const handleNotificationClick = async (id, type, support_id) => {
+  const handleNotificationClick = async (id, type, support_id, reportId, formCode) => {
     await markAsRead(id, type);
     if (type === 'support') {
       // ไปหน้า support-list หรือรายละเอียด support
       router.push(`/support-list?id=${support_id}`);
+    } else if (type === 'note') {
+      router.push(`/main?tab=5&searchFormCode=${formCode}`);
     } else {
       router.push(`/reports?reportId=${id}`);
     }
@@ -193,7 +208,7 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center space-x-4">
-          {user && (user.status === 'admin' || user.status === 'superadmin') && (
+          {user && (
             <div className="relative">
               <button
                 onClick={toggleNotification}
@@ -230,20 +245,26 @@ export default function Header() {
                               <div className="flex items-center space-x-2 mb-1">
                                 {notification._type === 'support' ? (
                                   <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-500" title="Support" />
+                                ) : notification._type === 'note' ? (
+                                  <FontAwesomeIcon icon={faClipboardList} className="text-green-500" title="Note" />
                                 ) : (
                                   <FontAwesomeIcon icon={faFileAlt} className="text-blue-500" title="Report" />
                                 )}
                                 <span className="text-xs font-bold">
-                                  {notification._type === 'support' ? 'คำร้องขอความช่วยเหลือ' : 'รายงาน/อบรม'}
+                                  {notification._type === 'support' ? 'คำร้องขอความช่วยเหลือ' 
+                                   : notification._type === 'note' ? 'มีข้อความจาก กบค. เข้ามา' 
+                                   : 'รายงาน/อบรม'}
                                 </span>
                               </div>
                               <div className="flex-1">
                                 <h3 className="text-sm font-semibold">
                                   {notification._type === 'support'
                                     ? notification.message
-                                    : `${notification.formCode}: ${notification.courseName || 'N/A'}`}
+                                    : notification._type === 'note'
+                                      ? `รายงานรหัส ${notification.formCode} : ${notification.note}`
+                                      : `${notification.formCode}: ${notification.courseName || 'N/A'}`}
                                 </h3>
-                                {notification._type === 'support' ? null : (
+                                {notification._type === 'support' || notification._type === 'note' ? null : (
                                   <>
                                     <p className="text-xs text-gray-700">{notification.full_name}</p>
                                     <p className="text-xs text-gray-700">{notification.department}</p>
@@ -251,7 +272,7 @@ export default function Header() {
                                 )}
                               </div>
                               <button
-                                onClick={() => handleNotificationClick(notification.id, notification._type, notification.support_id)}
+                                onClick={() => handleNotificationClick(notification.id, notification._type, notification.support_id, notification.reportId, notification.formCode)}
                                 className="text-blue-600 text-sm underline mt-2 self-end"
                               >
                                 ดูเพิ่มเติม

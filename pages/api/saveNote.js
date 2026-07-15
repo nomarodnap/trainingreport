@@ -14,6 +14,16 @@ export default async function handler(req, res) {
     );
 
     if (result.affectedRows > 0) {
+      if (note && note.trim() !== "") {
+        const [rows] = await pool.query("SELECT formCode FROM training_reports WHERE id = ?", [reportId]);
+        if (rows.length > 0) {
+          const formCode = rows[0].formCode;
+          await pool.query(
+            "INSERT INTO note_notifications (reportId, formCode, note) VALUES (?, ?, ?)",
+            [reportId, formCode, note]
+          );
+        }
+      }
       res.status(200).json({ message: "บันทึกโน้ตสำเร็จ" });
     } else {
       res.status(404).json({ message: "ไม่พบรายงานที่ต้องการอัปเดต" });
