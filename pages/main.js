@@ -144,6 +144,9 @@ function DirectReport() {
     // Fetch carousel images from backend
     const fetchCarouselImages = async () => {
       try {
+        if (typeof window !== 'undefined' && sessionStorage.getItem('hasSeenAnnouncement')) {
+          return;
+        }
         const response = await fetch('/api/carousel-images');
         const data = await response.json();
         // Allow the user to just put files, and we play them!
@@ -217,6 +220,13 @@ function DirectReport() {
       console.error("❌ ส่ง markAsSeen ล้มเหลว:", error);
     }
   }
+
+  const handleCloseCarousel = () => {
+    setShowCarousel(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('hasSeenAnnouncement', 'true');
+    }
+  };
 
 
 
@@ -491,7 +501,7 @@ function DirectReport() {
       {showCarousel && hasSeenTourState !== null && hasSeenTourState !== 0 && !isOpen && (
         <AnnouncementCarousel 
           items={carouselItems} 
-          onClose={() => setShowCarousel(false)} 
+          onClose={handleCloseCarousel} 
         />
       )}
       {isLoadingReports && (
@@ -545,6 +555,16 @@ function DirectReport() {
                   >
                     รายการคำร้อง
                   </button>
+
+                  {/* เฉพาะ superadmin */}
+                  {status === 'superadmin' && (
+                    <button
+                      onClick={() => window.location.href = '/monitor'}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg text-md md:text-lg transition-all duration-200 hover:scale-105 hover:animate-glow-rgb"
+                    >
+                      มอนิเตอร์
+                    </button>
+                  )}
 
                   <button
                     onClick={() => window.location.href = '/form2'}
