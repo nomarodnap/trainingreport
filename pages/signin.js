@@ -1,4 +1,4 @@
-import './styles.css';
+﻿import './styles.css';
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Cookies from 'js-cookie';
@@ -247,8 +247,8 @@ export default function SignIn() {
                     สามารถแก้ไขรหัสผ่านได้ในระบบ<span className="font-medium"> DPIS</span> โดยเลือก
                     <br /> <span className="font-medium"> "ลืมรหัสผ่าน"</span> แล้วกรอกอีเมลกรมประมงที่ท่านใช้สมัครไว้
                     <br />
-                    หากท่านลืมอีเมลกรมประมงของท่าน ให้ติดต่อที่ <br />
-                    <span className="font-medium"> ศูนย์เทคโนโลยีสารสนเทศฯ</span> โทร. 029405602 ต่อ 4040
+                    หากท่านติดปัญหาการเข้าใช้ระบบ ให้ติดต่อที่ <br />
+                    <span className="font-medium"> ศูนย์เทคโนโลยีสารสนเทศฯ</span> โทร. 025795591 ต่อ 5129
                   </p>
 
                 </div>
