@@ -1,22 +1,23 @@
-﻿// /api/auth/login-by-thaid.js
+// /api/auth/login-by-thaid.js
+import * as Sentry from '@sentry/nextjs';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
-import mysql from 'mysql2/promise';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import pool from '../../../lib/db';
+import { checkDpisAuth, requestDpisToken, upsertDpisUser } from '../../../lib/dpisAuth';
+import {
+  attachSessionUserContext,
+  sanitizeErrorForLog,
+  withBusinessSpan,
+} from '../../../lib/sentry';
 
 // Config (เปลี่ยนให้ตรงกับระบบคุณ)
 const THAID = {
   client_id: process.env.THAID_CLIENT_ID,
   client_secret: process.env.THAID_CLIENT_SECRET,
   redirect_uri: process.env.THAID_REDIRECT_URI,
-};
-
-const DPIS = {
-  domain: process.env.DPIS_DOMAIN,
-  api_user: process.env.DPIS_API_USER,
-  api_pass: process.env.DPIS_API_PASS,
 };
 
 const ENCRYPTION_KEY = crypto.createHash("sha256").update(process.env.ENCRYPTION_SECRET).digest("base64").substring(0, 32);
@@ -43,98 +44,19 @@ function encryptPassword(password) {
 }
 
 async function getPasswordFromDB(username) {
-  const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-
-  });
-
-  const [rows] = await db.execute("SELECT password FROM users WHERE username = ?", [username]);
-  await db.end();
-
-  if (!rows.length) throw new Error("ไม่พบผู้ใช้ในฐานข้อมูล ในการ login ครั้งแรก คุณจำเป็นต้องเข้าระบบด้วยวิธี DPIS ก่อน");
-  return decryptPassword(rows[0].password);
-}
-
-async function getDpisToken() {
-  const response = await axios.post(`${DPIS.domain}oapi/login`, {
-    username: DPIS.api_user,
-    password: DPIS.api_pass,
-  });
-  return response.data.accessToken;
-}
-
-async function loginDpis(username, password, accessToken) {
-  const response = await axios.post(
-    `${DPIS.domain}api/authuser/authcheck`,
-    new URLSearchParams({ authen_user: username, authen_password: password }).toString(),
-    {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: accessToken,
-      },
+  return withBusinessSpan(
+    'auth.load_encrypted_password',
+    'db.users',
+    { 'auth.provider': 'thaid' },
+    async (span) => {
+      const [rows] = await pool.execute('SELECT password FROM users WHERE username = ?', [username]);
+      span.setAttribute('users.found', rows.length > 0);
+      if (!rows.length) {
+        throw new Error('ไม่พบผู้ใช้ในฐานข้อมูล ในการ login ครั้งแรก คุณจำเป็นต้องเข้าระบบด้วยวิธี DPIS ก่อน');
+      }
+      return decryptPassword(rows[0].password);
     }
   );
-
-  const data = response.data.data;
-  return typeof data === 'string' ? JSON.parse(data) : data;
-}
-
-async function upsertUser(userData, password) {
-  const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-
-  });
-
-  const encryptedPassword = encryptPassword(password);
-  const userId = uuidv4();
-
-  await db.execute(
-    `INSERT INTO users 
-      (id, username, title, first_name, last_name, type, position, level, department, group_name, under_department1, password, last_login)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE 
-      title=VALUES(title), first_name=VALUES(first_name), last_name=VALUES(last_name),
-      type=VALUES(type), position=VALUES(position), level=VALUES(level),
-      department=VALUES(department), group_name=VALUES(group_name),
-      under_department1=VALUES(under_department1), password=VALUES(password), updated_at=CURRENT_TIMESTAMP, last_login=CURRENT_TIMESTAMP`,
-    [
-      userId,
-      userData.per_cardno,
-      userData.pn_name,
-      userData.per_name,
-      userData.per_surname,
-      userData.pertype_name,
-      userData.pl_name,
-      userData.per_level_name,
-      userData.org_name,
-      userData.org_name1,
-      userData.org_name2,
-      encryptedPassword,
-    ]
-  );
-
-  await db.end();
-}
-
-async function getStatus(username) {
-  const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-
-  });
-
-  const [rows] = await db.execute("SELECT status FROM users WHERE username = ?", [username]);
-  await db.end();
-
-  return rows.length ? rows[0].status : null;
 }
 
 export default async function handler(req, res) {
@@ -150,40 +72,84 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Missing code from ThaID' });
   }
 
+  const startedAt = Date.now();
+
   try {
     // 1. ขอ Token จาก ThaID
-    const params = new URLSearchParams();
-    params.append('grant_type', 'authorization_code');
-    params.append('code', code);
-    params.append('redirect_uri', THAID.redirect_uri);
-    params.append('client_id', THAID.client_id);
-    params.append('client_secret', THAID.client_secret);
+    const pid = await withBusinessSpan(
+      'auth.thaid_exchange_token',
+      'http.client.thaid',
+      { 'auth.provider': 'thaid' },
+      async (span) => {
+        const stepStartedAt = Date.now();
+        const params = new URLSearchParams();
+        params.append('grant_type', 'authorization_code');
+        params.append('code', code);
+        params.append('redirect_uri', THAID.redirect_uri);
+        params.append('client_id', THAID.client_id);
+        params.append('client_secret', THAID.client_secret);
 
-    const thaidResponse = await axios.post('https://imauth.bora.dopa.go.th/api/v2/oauth2/token/', params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+        const thaidResponse = await axios.post('https://imauth.bora.dopa.go.th/api/v2/oauth2/token/', params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
 
-    const tokenData = thaidResponse.data;
-    const decoded = jwt.decode(tokenData.id_token);
+        const stepDurationMs = Date.now() - stepStartedAt;
+        span.setAttributes({
+          'thaid.http_status': thaidResponse.status,
+          'thaid.duration_ms': stepDurationMs,
+        });
 
-    const pid = decoded?.pid;
-    if (!pid) throw new Error("ไม่พบ pid ใน id_token");
+        if (stepDurationMs >= 3000) {
+          Sentry.logger.warn('ThaID OAuth token endpoint responded slowly', {
+            auth_provider: 'thaid',
+            http_status: thaidResponse.status,
+            duration_ms: stepDurationMs,
+          });
+        }
+
+        const tokenData = thaidResponse.data;
+        const decoded = jwt.decode(tokenData.id_token);
+        const decodedPid = decoded?.pid;
+        span.setAttribute('auth.has_pid', Boolean(decodedPid));
+
+        if (!decodedPid) throw new Error('ไม่พบ pid ใน id_token');
+        return decodedPid;
+      }
+    );
+
+    attachSessionUserContext(req, { username: pid });
 
     // 2. ดึง password ที่เข้ารหัสจากฐานข้อมูล
     const password = await getPasswordFromDB(pid);
 
     // 3. ขอ token จาก DPIS
-    const dpisToken = await getDpisToken();
+    const tokenData = await requestDpisToken('thaid');
+    if (!tokenData?.accessToken) {
+      throw new Error('Failed to get DPIS API token');
+    }
 
     // 4. Login เข้า DPIS
-    const userData = await loginDpis(pid, password, dpisToken);
-    if (!userData?.per_cardno) throw new Error("DPIS login ไม่ผ่าน อาจเป็นเพราะมาจากระบบ DPIS ล่ม หรือไม่ก็คุณได้เปลี่ยนรหัส DPIS ให้ลองเข้าระบบด้วยวิธี DPIS");
+    const authResult = await checkDpisAuth(pid, password, tokenData.accessToken, 'thaid');
+    if (authResult.parseError) {
+      throw authResult.parseError;
+    }
+    const userData = authResult.userData;
+    if (!userData?.per_cardno) {
+      throw new Error('DPIS login ไม่ผ่าน อาจเป็นเพราะมาจากระบบ DPIS ล่ม หรือไม่ก็คุณได้เปลี่ยนรหัส DPIS ให้ลองเข้าระบบด้วยวิธี DPIS');
+    }
 
     // 5. บันทึก/อัปเดตข้อมูล user ลง DB
-    await upsertUser(userData, password);
+    const status = await upsertDpisUser(uuidv4(), userData, encryptPassword(password), 'thaid');
+
+    attachSessionUserContext(req, {
+      username: pid,
+      status,
+      department: userData.org_name,
+      group_name: userData.org_name1,
+      type: userData.pertype_name,
+    });
 
     // 6. สร้าง cookie session
-    const status = await getStatus(pid);
     const userCookie = serialize('session', JSON.stringify({
       username: pid,
       status,
@@ -196,11 +162,29 @@ export default async function handler(req, res) {
       maxAge: 60 * 60 * 8, // 8 ชั่วโมง
     });
 
+    Sentry.logger.info('ThaID login succeeded', {
+      auth_provider: 'thaid',
+      dpis_http_status: authResult.httpStatus,
+      user_role: status || 'unknown',
+      duration_ms: Date.now() - startedAt,
+      status: 'success',
+      http_status: 302,
+    });
+
     res.setHeader('Set-Cookie', userCookie);
     res.redirect('/');
 
   } catch (err) {
-    console.error('❌ Login by ThaID error:', err);
-    res.status(500).json({ message: 'Login failed', error: err.message });
+    const safeErr = sanitizeErrorForLog(err);
+    Sentry.logger.error('ThaID login failed', {
+      auth_provider: 'thaid',
+      duration_ms: Date.now() - startedAt,
+      status: 'error',
+      http_status: 500,
+      ...safeErr,
+    });
+    Sentry.captureException(err);
+    console.error('❌ Login by ThaID error:', safeErr.error_message);
+    res.status(500).json({ message: 'Login failed', error: safeErr.error_message });
   }
 }

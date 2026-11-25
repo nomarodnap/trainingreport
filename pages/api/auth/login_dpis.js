@@ -1,8 +1,9 @@
-﻿import mysql from "mysql2/promise";
-import axios from "axios";
+import * as Sentry from "@sentry/nextjs";
 import { serialize } from "cookie";
 import { v4 as uuidv4 } from 'uuid';
 import crypto from "crypto";
+import { checkDpisAuth, requestDpisToken, upsertDpisUser } from "../../../lib/dpisAuth";
+import { attachSessionUserContext, sanitizeErrorForLog } from "../../../lib/sentry";
 
 
 const ENCRYPTION_KEY = crypto.createHash("sha256").update(String(process.env.ENCRYPTION_SECRET)).digest("base64").substring(0, 32); // 32 bytes key
@@ -14,42 +15,6 @@ function encryptPassword(password) {
   let encrypted = cipher.update(password, "utf8", "hex");
   encrypted += cipher.final("hex");
   return iv.toString("hex") + ":" + encrypted;
-}
-
-
-const DOMAIN_SERVER = process.env.DPIS_DOMAIN;
-const USER_API = process.env.DPIS_API_USER;
-const PASSWORD_API = process.env.DPIS_API_PASS;
-
-
-async function getStatusFromDB(username) {
-  const db = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
-
-  const [rows] = await db.execute("SELECT status FROM users WHERE username = ?", [username]);
-  await db.end();
-
-  return rows.length > 0 ? rows[0].status : null;
-}
-
-// 🔥 ฟังก์ชันดึง Token จาก API
-async function getToken() {
-  try {
-    const response = await axios.post(`${DOMAIN_SERVER}oapi/login`, {
-      username: USER_API,
-      password: PASSWORD_API,
-    });
-
-    return response.data; // ✅ response.data.accessToken อยู่ในนี้
-  } catch (error) {
-    console.error("Error fetching token:", error);
-    throw new Error("Failed to get API token");
-  }
 }
 
 // 🔥 ฟังก์ชันหลัก
@@ -70,102 +35,79 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: "Both username and password are required." });
   }
 
+  const startedAt = Date.now();
+  attachSessionUserContext(req, { username });
+
   try {
     // ✅ ดึง Token จาก API
-    const tokenData = await getToken();
+    let tokenData;
+    try {
+      tokenData = await requestDpisToken("dpis");
+    } catch {
+      return res.status(500).json({ message: "เครือข่ายของระบบ DPIS มีปัญหา โปรดลองเข้าใหม่ในภายหลัง" });
+    }
+
     if (!tokenData || !tokenData.accessToken) {
+      Sentry.logger.warn("DPIS token missing in response", {
+        auth_provider: "dpis",
+        duration_ms: Date.now() - startedAt,
+        status: "missing_token",
+        http_status: 500,
+      });
       return res.status(500).json({ message: "Failed to get API token." });
     }
 
     // ✅ เรียก API เพื่อล็อกอิน
-    const apiResponse = await axios.post(
-      `${DOMAIN_SERVER}api/authuser/authcheck`,
-      new URLSearchParams({
-        authen_user: username,
-        authen_password: password,
-      }).toString(),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: tokenData.accessToken, // ✅ ใช้ token แบบเดิม
-        },
-      }
-    );
-
-    console.log("Raw API Response:", apiResponse.data);
+    const authResult = await checkDpisAuth(username, password, tokenData.accessToken, "dpis");
 
     // ✅ เช็คโครงสร้างข้อมูล
-    if (!apiResponse.data?.data) {
+    if (!authResult.hasPayload) {
+      Sentry.logger.warn("DPIS login failed: invalid credentials", {
+        auth_provider: "dpis",
+        dpis_http_status: authResult.httpStatus,
+        duration_ms: Date.now() - startedAt,
+        status: "unauthorized",
+        http_status: 401,
+      });
       return res.status(401).json({ message: "Invalid login credentials" });
     }
 
-    // ✅ แปลง JSON (หากจำเป็น)
-    let userData;
-    try {
-      userData = typeof apiResponse.data.data === "string"
-        ? JSON.parse(apiResponse.data.data)
-        : apiResponse.data.data;
-    } catch (error) {
-      console.error("JSON Parse Error:", error);
+    if (authResult.parseError || !authResult.userData) {
+      const safeParseErr = sanitizeErrorForLog(authResult.parseError);
+      Sentry.logger.error("DPIS authcheck response parse failed", {
+        auth_provider: "dpis",
+        dpis_http_status: authResult.httpStatus,
+        duration_ms: Date.now() - startedAt,
+        status: "invalid_response",
+        ...safeParseErr,
+      });
       return res.status(500).json({ message: "Invalid API response format" });
     }
 
+    const userData = authResult.userData;
+
     if (!userData.per_cardno) {
+      Sentry.logger.warn("DPIS login rejected: invalid card number or password", {
+        auth_provider: "dpis",
+        dpis_http_status: authResult.httpStatus,
+        duration_ms: Date.now() - startedAt,
+        status: "rejected",
+        http_status: 400,
+      });
       return res.status(400).json({ message: "คุณใส่เลขบัตรประชาชน หรือรหัสผ่านผิด" });
     }
 
-    // ✅ เชื่อมต่อ MySQL
-    const db = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-    });
-
-
     const userId = uuidv4();
+    const encryptedPassword = encryptPassword(password);
+    const status = await upsertDpisUser(userId, userData, encryptedPassword, "dpis");
 
-    // ✅ INSERT หรือ UPDATE ข้อมูลผู้ใช้
-    const encryptedPassword = encryptPassword(password); // ← new line
-
-    await db.execute(
-      `INSERT INTO users (id, username, title, first_name, last_name, type, position, level, department, group_name, under_department1, password, last_login)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-   ON DUPLICATE KEY UPDATE 
-     title = VALUES(title),
-     first_name = VALUES(first_name),
-     last_name = VALUES(last_name),
-     type = VALUES(type),
-     position = VALUES(position),
-     level = VALUES(level),
-     department = VALUES(department),
-     group_name = VALUES(group_name),
-     under_department1 = VALUES(under_department1),
-     password = VALUES(password),
-     updated_at = CURRENT_TIMESTAMP,
-     last_login = CURRENT_TIMESTAMP`,
-      [
-        userId,
-        userData.per_cardno,
-        userData.pn_name,
-        userData.per_name,
-        userData.per_surname,
-        userData.pertype_name,
-        userData.pl_name,
-        userData.per_level_name,
-        userData.org_name,
-        userData.org_name1,
-        userData.org_name2,
-        encryptedPassword  // ← new
-      ]
-    );
-
-
-    await db.end();
-
-    // ✅ ตั้งค่า Cookie
-    const status = await getStatusFromDB(userData.per_cardno);
+    attachSessionUserContext(req, {
+      username: userData.per_cardno,
+      status,
+      department: userData.org_name,
+      group_name: userData.org_name1,
+      type: userData.pertype_name,
+    });
 
     res.setHeader("Set-Cookie",
       serialize("session", JSON.stringify({
@@ -181,15 +123,28 @@ export default async function handler(req, res) {
       })
     );
 
-
-
-
-
+    Sentry.logger.info("DPIS login succeeded", {
+      auth_provider: "dpis",
+      dpis_http_status: authResult.httpStatus,
+      user_role: status || "unknown",
+      duration_ms: Date.now() - startedAt,
+      status: "success",
+      http_status: 200,
+    });
 
     return res.status(200).json({ message: "Login successful", user: userData });
 
   } catch (error) {
-    console.error("Login Error:", error);
+    const safeErr = sanitizeErrorForLog(error);
+    Sentry.logger.error("DPIS login unexpected error", {
+      auth_provider: "dpis",
+      duration_ms: Date.now() - startedAt,
+      status: "error",
+      http_status: 500,
+      ...safeErr,
+    });
+    Sentry.captureException(error);
+    console.error("Login Error:", safeErr.error_message);
     return res.status(500).json({
       message:
         "เครือข่ายของระบบ DPIS มีปัญหา โปรดลองเข้าใหม่ในภายหลัง"

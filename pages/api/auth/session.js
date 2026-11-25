@@ -1,5 +1,7 @@
-﻿import { parse, serialize } from 'cookie';
+import * as Sentry from '@sentry/nextjs';
+import { parse, serialize } from 'cookie';
 import pool from '../../../lib/db';
+import { attachSessionUserContext, sanitizeErrorForLog } from '../../../lib/sentry';
 
 export default async function handler(req, res) {
   // รองรับเฉพาะ GET
@@ -34,18 +36,32 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Invalid session format' });
   }
 
+  attachSessionUserContext(req, { username });
+
+  const startedAt = Date.now();
   const connection = await pool.getConnection();
 
   try {
     // 🔍 ดึงข้อมูลผู้ใช้จาก DB
     const [rows] = await connection.execute(
-      'SELECT username, status, is_user_mode FROM users WHERE username = ?',
+      'SELECT id, username, status, department, group_name, type, is_user_mode FROM users WHERE username = ?',
       [username]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const userRow = rows[0];
+    attachSessionUserContext(req, {
+      id: userRow.id,
+      username: userRow.username,
+      status: userRow.status,
+      department: userRow.department,
+      group_name: userRow.group_name,
+      type: userRow.type,
+    });
+    Sentry.setAttribute('user.is_user_mode', Boolean(userRow.is_user_mode));
 
     // ♻️ รีเฟรช cookie session (อายุ 30 นาที)
     const expires = new Date(Date.now() + 30 * 60 * 1000);
@@ -59,10 +75,22 @@ export default async function handler(req, res) {
     res.setHeader('Set-Cookie', newCookie);
 
     // ✅ ส่งข้อมูลผู้ใช้กลับในรูปแบบ JSON เสมอ
-    return res.status(200).json(rows[0]);
+    return res.status(200).json({
+      username: userRow.username,
+      status: userRow.status,
+      is_user_mode: userRow.is_user_mode,
+    });
 
   } catch (error) {
-    console.error('❌ /api/auth/session error:', error);
+    const safeErr = sanitizeErrorForLog(error);
+    Sentry.logger.error('Session lookup failed', {
+      duration_ms: Date.now() - startedAt,
+      status: 'error',
+      http_status: 500,
+      ...safeErr,
+    });
+    Sentry.captureException(error);
+    console.error('❌ /api/auth/session error:', safeErr.error_message);
     return res.status(500).json({ message: 'Internal server error' });
   } finally {
     connection.release();

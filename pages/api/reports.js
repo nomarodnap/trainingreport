@@ -1,7 +1,10 @@
 // pages/api/reports.js
 import reportsController from '../../controllers/reportsController';
+import { attachSessionUserContext } from '../../lib/sentry';
 
 export default async function handler(req, res) {
+    attachSessionUserContext(req);
+
     if (req.method === 'GET') {
         return reportsController.getReports(req, res);
     } else if (req.method === 'DELETE') {

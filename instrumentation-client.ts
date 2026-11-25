@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { CLIENT_DATA_COLLECTION, createBeforeSendLog } from "./lib/sentryConfig";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -11,10 +12,13 @@ Sentry.init({
     Sentry.feedbackIntegration({
       colorScheme: "system",
     }),
+    Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
   ],
 
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
+  beforeSendLog: createBeforeSendLog(),
+  dataCollection: CLIENT_DATA_COLLECTION,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

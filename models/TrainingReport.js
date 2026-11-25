@@ -1,5 +1,6 @@
 import pool from '../lib/db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { withBusinessSpan } from '../lib/sentry';
 
 export default class TrainingReport {
 
@@ -76,47 +77,72 @@ export default class TrainingReport {
 
     const id = uuidv4();
 
-    /* ---------- Validate Date ---------- */
-    if (startDate && isNaN(new Date(startDate).getTime())) {
-      throw new Error('Invalid startDate format');
-    }
-    if (endDate && isNaN(new Date(endDate).getTime())) {
-      throw new Error('Invalid endDate format');
-    }
+    /* ---------- Validate Date & Budget ---------- */
+    await withBusinessSpan(
+      'submit_form.validate_input',
+      'form.validate',
+      { 'submit_form.has_course_code': Boolean(courseCode) },
+      () => {
+        if (startDate && isNaN(new Date(startDate).getTime())) {
+          throw new Error('Invalid startDate format');
+        }
+        if (endDate && isNaN(new Date(endDate).getTime())) {
+          throw new Error('Invalid endDate format');
+        }
+
+        const MAX_INT = 2147483647;
+        if (internalBudget > MAX_INT || externalBudget > MAX_INT || totalCost > MAX_INT) {
+          throw new Error('Budget value exceeds database limit (Max: 2,147,483,647)');
+        }
+      }
+    );
 
     /* ---------- Fetch Course Detail ---------- */
     let courseCodeDetail = null;
     let categoryDetail = null;
 
     if (courseCode) {
-      const [result] = await pool.query(
-        'SELECT code_cou, name_cou, category FROM course1 WHERE id_macou = ?',
-        [courseCode]
-      );
+      await withBusinessSpan(
+        'submit_form.fetch_course',
+        'db.course',
+        {},
+        async (span) => {
+          const [result] = await pool.query(
+            'SELECT code_cou, name_cou, category FROM course1 WHERE id_macou = ?',
+            [courseCode]
+          );
 
-      if (result.length > 0) {
-        courseCodeDetail = `${result[0].code_cou} - ${result[0].name_cou}`;
-        categoryDetail = result[0].category;
-      }
+          const found = result.length > 0;
+          span.setAttribute('submit_form.has_course_detail', found);
+          if (found) {
+            courseCodeDetail = `${result[0].code_cou} - ${result[0].name_cou}`;
+            categoryDetail = result[0].category;
+          }
+        }
+      );
     }
 
-    /* ---------- Validate Budget Range ---------- */
-    const MAX_INT = 2147483647;
-    if (internalBudget > MAX_INT || externalBudget > MAX_INT || totalCost > MAX_INT) {
-      throw new Error('Budget value exceeds database limit (Max: 2,147,483,647)');
-    }
+    return withBusinessSpan(
+      'submit_form.persist_report',
+      'db.transaction',
+      {
+        'report.has_approval_doc': Boolean(approvalDocument),
+        'report.has_training_project_doc': Boolean(trainingProjectDocument),
+        'report.has_certificate': Boolean(certificate_url),
+      },
+      async (span) => {
+        const connection = await pool.getConnection();
 
-    const connection = await pool.getConnection();
+        try {
+          await connection.beginTransaction();
 
-    try {
-      await connection.beginTransaction();
+          const formCode = await this.generateFormCode(
+            submitTime || new Date(),
+            connection
+          );
+          span.setAttribute('form_code', formCode);
 
-      const formCode = await this.generateFormCode(
-        submitTime || new Date(),
-        connection
-      );
-
-      const query = `
+          const query = `
   INSERT INTO training_reports (
     id, formCode, username, trainingOrg,
     courseCode, courseName, category, trainingBatch, generation,
@@ -147,65 +173,67 @@ export default class TrainingReport {
 `;
 
 
-      const values = [
-        id,
-        formCode,
-        username,
-        trainingOrg,
-        courseCode,
-        courseName,
-        categoryDetail || null,
-        trainingBatch || null,
-        generation || null,
-        trainingType || null,
-        checked || 'รอตรวจสอบ',
-        period || null,
-        trainingMethod || null,
-        startDate || null,
-        endDate || null,
-        regFeeAmount || 0,
-        accommodationFeeAmount || 0,
-        transportationFeeAmount || 0,
-        allowanceFeeAmount || 0,
-        internalBudget || 0,
-        externalBudget || 0,
-        externalAgency || null,
-        planBudget || null,
-        projectOutput || null,
-        mainActivity || null,
-        subActivity || null,
-        totalCost || 0,
-        hybridLocation || null,
-        telephone || null,
-        submitTime || new Date(),
-        'รออนุมัติ',
-        knowledgeUsage?.[0] || null,
-        knowledgeUsage?.[1] || null,
-        knowledgeUsage?.[2] || null,
-        knowledgeUsage?.[3] || null,
-        knowledgeUsage?.[4] || null,
-        approvalDocument || null,
-        trainingProjectDocument || null,
-        certificate_url || null,
-        note || null, // ✅ note
-      ];
+          const values = [
+            id,
+            formCode,
+            username,
+            trainingOrg,
+            courseCode,
+            courseName,
+            categoryDetail || null,
+            trainingBatch || null,
+            generation || null,
+            trainingType || null,
+            checked || 'รอตรวจสอบ',
+            period || null,
+            trainingMethod || null,
+            startDate || null,
+            endDate || null,
+            regFeeAmount || 0,
+            accommodationFeeAmount || 0,
+            transportationFeeAmount || 0,
+            allowanceFeeAmount || 0,
+            internalBudget || 0,
+            externalBudget || 0,
+            externalAgency || null,
+            planBudget || null,
+            projectOutput || null,
+            mainActivity || null,
+            subActivity || null,
+            totalCost || 0,
+            hybridLocation || null,
+            telephone || null,
+            submitTime || new Date(),
+            'รออนุมัติ',
+            knowledgeUsage?.[0] || null,
+            knowledgeUsage?.[1] || null,
+            knowledgeUsage?.[2] || null,
+            knowledgeUsage?.[3] || null,
+            knowledgeUsage?.[4] || null,
+            approvalDocument || null,
+            trainingProjectDocument || null,
+            certificate_url || null,
+            note || null, // ✅ note
+          ];
 
-      await connection.query(query, values);
-      await connection.commit();
+          await connection.query(query, values);
+          await connection.commit();
 
-      return {
-        message: 'Data saved successfully',
-        formCode,
-        id,
-      };
+          return {
+            message: 'Data saved successfully',
+            formCode,
+            id,
+          };
 
-    } catch (error) {
-      await connection.rollback();
-      console.error('Database error:', error);
-      throw new Error('Database operation failed');
-    } finally {
-      connection.release();
-    }
+        } catch (error) {
+          await connection.rollback();
+          console.error('Database error:', error);
+          throw new Error('Database operation failed');
+        } finally {
+          connection.release();
+        }
+      }
+    );
   }
 
   /* ===============================

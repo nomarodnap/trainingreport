@@ -1,9 +1,25 @@
 // controllers/reportsController.js
+import * as Sentry from '@sentry/nextjs';
 import pool from '../lib/db.js';
+import {
+    attachSessionUserContext,
+    sanitizeErrorForLog,
+    withBusinessSpan,
+} from '../lib/sentry';
 
 const getReports = async (req, res) => {
+    const startedAt = Date.now();
+    attachSessionUserContext(req);
+
+    const filterPresent = Object.keys(req.query || {}).length > 0;
+
     try {
-        const [rows] = await pool.query(`
+        const rows = await withBusinessSpan(
+            'reports.fetch_all',
+            'db.reports',
+            { 'reports.filter_present': filterPresent },
+            async (span) => {
+                const [resultRows] = await pool.query(`
     SELECT 
         tr.*, 
         u.id AS user_id,
@@ -33,28 +49,87 @@ const getReports = async (req, res) => {
         users ue
       ON tr.whoEdit = ue.username
 `);
-        res.status(200).json(rows);
+                span.setAttribute('reports.count', resultRows.length);
+                return resultRows;
+            }
+        );
+
+        await withBusinessSpan(
+            'reports.serialize_response',
+            'serialize.json',
+            {
+                'reports.count': rows.length,
+                'reports.filter_present': filterPresent,
+            },
+            () => {
+                res.status(200).json(rows);
+            }
+        );
     } catch (error) {
-        console.error('Error fetching reports:', error);
+        const safeErr = sanitizeErrorForLog(error);
+        Sentry.logger.error('Failed to fetch reports', {
+            duration_ms: Date.now() - startedAt,
+            filter_present: filterPresent,
+            status: 'error',
+            ...safeErr,
+        });
+        Sentry.captureException(error);
+        console.error('Error fetching reports:', safeErr.error_message);
         res.status(500).json({ message: 'Error fetching reports' });
     }
 };
 
 
 const deleteReport = async (req, res) => {
+    const startedAt = Date.now();
+    attachSessionUserContext(req);
+
     const { id } = req.query;
     if (!id) {
         return res.status(400).json({ message: 'Missing report ID' });
     }
 
     try {
-        const result = await pool.query('DELETE FROM training_reports WHERE id = ?', [id]);
-        if (result[0].affectedRows === 0) {
+        const affectedRows = await withBusinessSpan(
+            'reports.delete',
+            'db.reports',
+            {},
+            async (span) => {
+                const result = await pool.query('DELETE FROM training_reports WHERE id = ?', [id]);
+                const deletedCount = result[0].affectedRows;
+                span.setAttributes({
+                    'db.affected_rows': deletedCount,
+                    'report.deleted': deletedCount > 0,
+                });
+                return deletedCount;
+            }
+        );
+
+        if (affectedRows === 0) {
+            Sentry.logger.warn('Report delete target not found', {
+                duration_ms: Date.now() - startedAt,
+                status: 'not_found',
+                http_status: 404,
+            });
             return res.status(404).json({ message: 'Report not found' });
         }
+
+        Sentry.logger.info('Training report deleted', {
+            duration_ms: Date.now() - startedAt,
+            affected_rows: affectedRows,
+            status: 'success',
+            http_status: 200,
+        });
         res.status(200).json({ message: 'Report deleted successfully' });
     } catch (error) {
-        console.error('Error deleting report:', error);
+        const safeErr = sanitizeErrorForLog(error);
+        Sentry.logger.error('Failed to delete report', {
+            duration_ms: Date.now() - startedAt,
+            status: 'error',
+            ...safeErr,
+        });
+        Sentry.captureException(error);
+        console.error('Error deleting report:', safeErr.error_message);
         res.status(500).json({ message: 'Error deleting report' });
     }
 };
